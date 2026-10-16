@@ -1,0 +1,429 @@
+<Window x:Class="DnsLoadTester.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:DnsLoadTester.App.Controls"
+        xmlns:l="clr-namespace:DnsLoadTester.App"
+        Title="DNS Load Tester" Height="780" Width="1500" MinHeight="640" MinWidth="1100"
+        FontFamily="Segoe UI" FontSize="12.5"
+        WindowStartupLocation="CenterScreen" Background="{StaticResource AppBg}"
+        Icon="app.ico">
+    <Window.CommandBindings>
+        <CommandBinding Command="ApplicationCommands.Help" Executed="Help_Executed"/>
+    </Window.CommandBindings>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ============ Barra comandi ============ -->
+        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,8">
+            <DockPanel LastChildFill="True">
+                <TextBlock x:Name="TxtState" DockPanel.Dock="Right" Text="Pronto" VerticalAlignment="Center" Margin="12,0,0,0"
+                           Foreground="{StaticResource Muted}" FontWeight="SemiBold"/>
+                <WrapPanel Orientation="Horizontal">
+                    <TextBlock Text="DNS Load Tester" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <TextBlock x:Name="TxtVersion" Text="v1.0" Foreground="{StaticResource Muted}" VerticalAlignment="Center" Margin="0,2,18,0"/>
+                    <Button x:Name="BtnStart" Style="{StaticResource BtnPrimary}" l:Loc.Text="▶  Avvia test" Click="BtnStart_Click" MinWidth="110"/>
+                    <Button x:Name="BtnStop" Style="{StaticResource BtnDanger}" l:Loc.Text="■  Arresta" Click="BtnStop_Click" IsEnabled="False" MinWidth="100"/>
+                    <Button x:Name="BtnProbe" l:Loc.Text="Verifica destinazione" Click="BtnProbe_Click" l:Loc.Tip="Invia una volta ogni query (max 20) e mostra le risposte, senza avviare il test"/>
+                    <Rectangle Width="1" Fill="{StaticResource Line}" Margin="6,2,12,2"/>
+                    <Button x:Name="BtnOpenFolder" l:Loc.Text="Cartella sessione" Click="BtnOpenFolder_Click" IsEnabled="False"/>
+                    <Button x:Name="BtnOpenReport" l:Loc.Text="Apri report" Click="BtnOpenReport_Click" IsEnabled="False"/>
+                    <Button x:Name="BtnSnapshotReport" l:Loc.Text="Report parziale" Click="BtnSnapshotReport_Click" IsEnabled="False"
+                            l:Loc.Tip="Genera un report con i dati raccolti finora, senza fermare il test"/>
+                    <Button x:Name="BtnRegenReport" l:Loc.Text="Report da sessione…" Click="BtnRegenReport_Click"
+                            l:Loc.Tip="Rigenera il report di una sessione salvata (anche interrotta)"/>
+                    <Button x:Name="BtnOpenSession" l:Loc.Text="Apri sessione…" Click="BtnOpenSession_Click"
+                            l:Loc.Tip="Carica nel cruscotto i grafici e i dati di una sessione salvata, per analizzarla"/>
+                    <Button x:Name="BtnAnalyzeLog" l:Loc.Text="Analizza log query…" Click="BtnAnalyzeLog_Click"
+                            l:Loc.Tip="Analisi grafica a posteriori dei file queries_NNNN.csv: ogni singola query, filtri per nome, tipo ed esito"/>
+                    <Rectangle Width="1" Fill="{StaticResource Line}" Margin="6,2,12,2"/>
+                    <Button x:Name="BtnLoadProfile" l:Loc.Text="Carica profilo…" Click="BtnLoadProfile_Click"/>
+                    <Button x:Name="BtnSaveProfile" l:Loc.Text="Salva profilo…" Click="BtnSaveProfile_Click"/>
+                    <Rectangle Width="1" Fill="{StaticResource Line}" Margin="6,2,12,2"/>
+                    <Button x:Name="BtnLanguage" Click="BtnLanguage_Click" l:Loc.Text="🌐 Lingua" l:Loc.Tip="Lingua dell'interfaccia (applicata al riavvio)"/>
+                    <Button x:Name="BtnHelp" l:Loc.Text="?  Guida (F1)" Command="ApplicationCommands.Help"
+                            l:Loc.Tip="Apre la guida completa nel browser"/>
+                </WrapPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="10,10,10,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="370" MinWidth="300"/>
+                <ColumnDefinition Width="8"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ============ Configurazione ============ -->
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" x:Name="ConfigScroll">
+                <StackPanel x:Name="ConfigPanel" Margin="0,0,6,0">
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" l:Loc.Text="DESTINAZIONE"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="105"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Protocollo"/>
+                                <ComboBox x:Name="CmbProtocol" Grid.Column="1" SelectionChanged="CmbProtocol_SelectionChanged">
+                                    <ComboBoxItem Tag="Udp" l:Loc.Text="UDP (porta 53)"/>
+                                    <ComboBoxItem Tag="Tcp" l:Loc.Text="TCP (porta 53)"/>
+                                    <ComboBoxItem Tag="DoT" l:Loc.Text="DoT – DNS over TLS (853)"/>
+                                    <ComboBoxItem Tag="DoH" l:Loc.Text="DoH – DNS over HTTPS (443)"/>
+                                    <ComboBoxItem Tag="DoQ" l:Loc.Text="DoQ – DNS over QUIC (853)"/>
+                                </ComboBox>
+                                <TextBlock x:Name="LblServer" Grid.Row="1" Style="{StaticResource Lbl}" l:Loc.Text="Server"/>
+                                <DockPanel x:Name="RowServer" Grid.Row="1" Grid.Column="1">
+                                    <Button x:Name="BtnServerHistory" DockPanel.Dock="Right" Content="⋯" Padding="7,1" Margin="4,2,0,2"
+                                            Click="BtnHistory_Click" Tag="Server" l:Loc.Tip="Gestisci la cronologia dei server"/>
+                                    <ComboBox x:Name="CmbServer" IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
+                                              l:Loc.Tip="Indirizzo IPv4/IPv6 o nome del server (es. ns1.dominio.it). La freccia mostra gli ultimi 30 usati."/>
+                                </DockPanel>
+                                <TextBlock x:Name="LblPort" Grid.Row="2" Style="{StaticResource Lbl}" l:Loc.Text="Porta / IP"/>
+                                <Grid x:Name="RowPort" Grid.Row="2" Grid.Column="1">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="80"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBox x:Name="TxtPort"/>
+                                    <ComboBox x:Name="CmbIpFamily" Grid.Column="1" Margin="6,2,0,2" l:Loc.Tip="Famiglia IP se il server è indicato per nome">
+                                        <ComboBoxItem Tag="0" l:Loc.Text="IP automatico"/>
+                                        <ComboBoxItem Tag="4" l:Loc.Text="Solo IPv4"/>
+                                        <ComboBoxItem Tag="6" l:Loc.Text="Solo IPv6"/>
+                                    </ComboBox>
+                                </Grid>
+                            </Grid>
+
+                            <StackPanel x:Name="PanelDoh" Visibility="Collapsed">
+                                <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="URL DoH" Margin="0,4,0,0"/>
+                                <DockPanel>
+                                    <Button DockPanel.Dock="Right" Content="⋯" Padding="7,1" Margin="4,2,0,2"
+                                            Click="BtnHistory_Click" Tag="DohUrl" l:Loc.Tip="Gestisci la cronologia degli URL DoH"/>
+                                    <ComboBox x:Name="CmbDohUrl" IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
+                                              l:Loc.Tip="URL completo del servizio DoH (es. https://dns.esempio.it/dns-query). La freccia mostra gli ultimi 30 usati."/>
+                                </DockPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="6"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="CmbDohMethod">
+                                        <ComboBoxItem Tag="Post" l:Loc.Text="Metodo POST"/>
+                                        <ComboBoxItem Tag="Get" l:Loc.Text="Metodo GET"/>
+                                    </ComboBox>
+                                    <ComboBox x:Name="CmbHttpVersion" Grid.Column="2">
+                                        <ComboBoxItem Tag="Http11" l:Loc.Text="HTTP/1.1"/>
+                                        <ComboBoxItem Tag="Http2" l:Loc.Text="HTTP/2"/>
+                                        <ComboBoxItem Tag="Http3" l:Loc.Text="HTTP/3 (QUIC)"/>
+                                    </ComboBox>
+                                </Grid>
+                            </StackPanel>
+
+                            <StackPanel x:Name="PanelTls" Visibility="Collapsed">
+                                <Grid x:Name="RowTlsName">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="105"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Nome TLS (SNI)"/>
+                                    <ComboBox x:Name="CmbTlsName" Grid.Column="1" IsEditable="True" IsTextSearchEnabled="False" StaysOpenOnEdit="True"
+                                              l:Loc.Tip="Nome atteso nel certificato (SNI). Vuoto = uguale al campo Server"/>
+                                </Grid>
+                                <CheckBox x:Name="ChkSkipCert" l:Loc.Text="Non verificare il certificato del server"/>
+                            </StackPanel>
+                            <CheckBox x:Name="ChkReuse" l:Loc.Text="Riusa le connessioni (TCP/TLS/QUIC/HTTP)" IsChecked="True"
+                                      l:Loc.Tip="Se disattivato, ogni query apre una nuova connessione (misura anche il costo dell'handshake)"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <DockPanel Margin="0,0,0,4">
+                                <Button DockPanel.Dock="Right" l:Loc.Text="Salva…" Padding="8,2" Margin="0" Click="BtnSaveQueries_Click"
+                                        l:Loc.Tip="Salva l'elenco di query corrente in un file di testo"/>
+                                <Button DockPanel.Dock="Right" l:Loc.Text="Carica…" Padding="8,2" Margin="0,0,4,0" Click="BtnLoadQueries_Click"
+                                        l:Loc.Tip="Carica un elenco di query da file (.txt o .csv)"/>
+                                <TextBlock Style="{StaticResource SectionTitle}" l:Loc.Text="QUERY" Margin="0" VerticalAlignment="Center"/>
+                            </DockPanel>
+                            <TextBox x:Name="TxtQueries" AcceptsReturn="True" Height="130" TextWrapping="NoWrap"
+                                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas" FontSize="12" VerticalContentAlignment="Top"/>
+                            <TextBlock Style="{StaticResource Hint}" x:Name="TxtQueriesHint"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="105"/><ColumnDefinition/><ColumnDefinition Width="6"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Tipo predefinito"/>
+                                <ComboBox x:Name="CmbDefaultType" Grid.Column="1" IsEditable="True"/>
+                                <ComboBox x:Name="CmbOrder" Grid.Column="3">
+                                    <ComboBoxItem Tag="RoundRobin" l:Loc.Text="In sequenza"/>
+                                    <ComboBoxItem Tag="Random" l:Loc.Text="Casuale"/>
+                                </ComboBox>
+                            </Grid>
+                            <WrapPanel>
+                                <CheckBox x:Name="ChkRd" l:Loc.Text="Flag RD" Margin="0,4,14,4" l:Loc.Tip="Recursion Desired: normalmente disattivato verso un server autoritativo"/>
+                                <CheckBox x:Name="ChkEdns" l:Loc.Text="EDNS0" Margin="0,4,6,4" IsChecked="True"/>
+                                <TextBox x:Name="TxtEdnsSize" Width="52" Margin="0,2,4,2" l:Loc.Tip="Dimensione buffer UDP annunciata (1232 consigliato)"/>
+                                <CheckBox x:Name="ChkDo" l:Loc.Text="DNSSEC (DO)" Margin="8,4,0,4"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" l:Loc.Text="CARICO E DURATA"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="105"/><ColumnDefinition/><ColumnDefinition Width="12"/><ColumnDefinition Width="75"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="QPS obiettivo"/>
+                                <TextBox x:Name="TxtQps" Grid.Column="1" l:Loc.Tip="Query al secondo totali. 0 = nessun limite (massimo throughput)"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Column="3" l:Loc.Text="Worker"/>
+                                <TextBox x:Name="TxtConcurrency" Grid.Column="4" l:Loc.Tip="Query contemporaneamente in volo (ogni worker ne ha una alla volta)"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" l:Loc.Text="Timeout (ms)"/>
+                                <TextBox x:Name="TxtTimeout" Grid.Row="1" Grid.Column="1"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" Grid.Column="3" l:Loc.Text="Rampa (s)"/>
+                                <TextBox x:Name="TxtRamp" Grid.Row="1" Grid.Column="4" l:Loc.Tip="Secondi per arrivare gradualmente al QPS obiettivo"/>
+                            </Grid>
+                            <DockPanel Margin="0,4,0,0">
+                                <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Durata" Width="97"/>
+                                <TextBox x:Name="TxtDays" Width="40"/><TextBlock Style="{StaticResource Lbl}" l:Loc.Text="gg" Margin="3,0,8,0"/>
+                                <TextBox x:Name="TxtHours" Width="40"/><TextBlock Style="{StaticResource Lbl}" l:Loc.Text="ore" Margin="3,0,8,0"/>
+                                <TextBox x:Name="TxtMinutes" Width="40"/><TextBlock Style="{StaticResource Lbl}" l:Loc.Text="min" Margin="3,0,0,0"/>
+                            </DockPanel>
+                            <CheckBox x:Name="ChkUntilStop" l:Loc.Text="Senza limite di durata (fino ad arresto manuale)" Checked="ChkUntilStop_Changed" Unchecked="ChkUntilStop_Changed"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" l:Loc.Text="VALUTAZIONE DELLO STATO DEL SERVER"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="70"/></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Finestra di osservazione (s)"/>
+                                <TextBox x:Name="TxtWindow" Grid.Column="1"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" l:Loc.Text="Degradato se successo sotto (%)"/>
+                                <TextBox x:Name="TxtDegradedPct" Grid.Row="1" Grid.Column="1"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" l:Loc.Text="… oppure p95 latenza oltre (ms)"/>
+                                <TextBox x:Name="TxtDegradedP95" Grid.Row="2" Grid.Column="1"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="3" l:Loc.Text="Non disponibile se successo sotto (%)"/>
+                                <TextBox x:Name="TxtDownPct" Grid.Row="3" Grid.Column="1"/>
+                            </Grid>
+                            <CheckBox x:Name="ChkNxSuccess" l:Loc.Text="Considera NXDOMAIN una risposta valida" IsChecked="True"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Section}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionTitle}" l:Loc.Text="LOG ED EXPORT"/>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="…" Padding="8,2" Margin="4,2,0,2" Click="BtnBrowseOutput_Click"/>
+                                <TextBox x:Name="TxtOutput" l:Loc.Tip="Cartella in cui viene creata una sottocartella per ogni sessione"/>
+                            </DockPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="105"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                                <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Etichetta sessione"/>
+                                <TextBox x:Name="TxtLabel" Grid.Column="1" l:Loc.Tip="Facoltativa, aggiunta al nome della cartella (es. cliente o ticket)"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="1" l:Loc.Text="Log per query"/>
+                                <ComboBox x:Name="CmbLogMode" Grid.Row="1" Grid.Column="1">
+                                    <ComboBoxItem Tag="All" l:Loc.Text="Tutte le query"/>
+                                    <ComboBoxItem Tag="FailuresOnly" l:Loc.Text="Solo fallimenti"/>
+                                    <ComboBoxItem Tag="Off" l:Loc.Text="Disattivato (solo aggregati)"/>
+                                </ComboBox>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="2" l:Loc.Text="Rotazione file (MB)"/>
+                                <TextBox x:Name="TxtRotate" Grid.Row="2" Grid.Column="1"/>
+                                <TextBlock Style="{StaticResource Lbl}" Grid.Row="3" l:Loc.Text="Formato CSV"/>
+                                <ComboBox x:Name="CmbCsv" Grid.Row="3" Grid.Column="1">
+                                    <ComboBoxItem Tag="ExcelItalian" l:Loc.Text="Excel italiano ( ; e virgola decimale)"/>
+                                    <ComboBoxItem Tag="Standard" l:Loc.Text="Standard ( , e punto decimale)"/>
+                                </ComboBox>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border x:Name="BdWarnings" Background="#FFFBEB" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,10" Visibility="Collapsed">
+                        <TextBlock x:Name="TxtWarnings" TextWrapping="Wrap" Foreground="#92400E" FontSize="11.5"/>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <GridSplitter Grid.Column="1" Width="8" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+            <!-- ============ Cruscotto ============ -->
+            <Grid Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="8"/>
+                    <RowDefinition Height="230" MinHeight="120"/>
+                </Grid.RowDefinitions>
+
+                <UniformGrid Grid.Row="0" Rows="1" Margin="0,0,-8,8">
+                    <Border x:Name="BdHealth" Style="{StaticResource Kpi}" Background="#F3F4F6">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KpiLabel}" l:Loc.Text="Stato server" x:Name="TxtHealthLabel"/>
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Height="27"><TextBlock x:Name="KHealth" Style="{StaticResource KpiValue}" Text="—" FontSize="17"/></Viewbox>
+                            <TextBlock x:Name="KHealthSub" Style="{StaticResource KpiSub}" Text=" "/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Kpi}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KpiLabel}" l:Loc.Text="Risposte/s (ultimo secondo)"/>
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Height="27"><TextBlock x:Name="KQps" Style="{StaticResource KpiValue}" Text="—"/></Viewbox>
+                            <TextBlock x:Name="KQpsSub" Style="{StaticResource KpiSub}" Text=" "/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Kpi}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KpiLabel}" x:Name="KSuccLabel" l:Loc.Text="Successo (finestra)"/>
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Height="27"><TextBlock x:Name="KSucc" Style="{StaticResource KpiValue}" Text="—"/></Viewbox>
+                            <TextBlock x:Name="KSuccSub" Style="{StaticResource KpiSub}" Text=" "/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Kpi}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KpiLabel}" l:Loc.Text="Latenza p50 / p95 / p99"/>
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Height="27"><TextBlock x:Name="KLat" Style="{StaticResource KpiValue}" Text="—" FontSize="17"/></Viewbox>
+                            <TextBlock x:Name="KLatSub" Style="{StaticResource KpiSub}" Text=" "/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Kpi}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KpiLabel}" l:Loc.Text="Query completate"/>
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Height="27"><TextBlock x:Name="KTotal" Style="{StaticResource KpiValue}" Text="—"/></Viewbox>
+                            <TextBlock x:Name="KTotalSub" Style="{StaticResource KpiSub}" Text=" "/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Kpi}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KpiLabel}" l:Loc.Text="Timeout / errori"/>
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Height="27"><TextBlock x:Name="KFail" Style="{StaticResource KpiValue}" Text="—"/></Viewbox>
+                            <TextBlock x:Name="KFailSub" Style="{StaticResource KpiSub}" Text=" "/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Kpi}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource KpiLabel}" l:Loc.Text="Tempo trascorso"/>
+                            <Viewbox StretchDirection="DownOnly" HorizontalAlignment="Left" Height="27"><TextBlock x:Name="KTime" Style="{StaticResource KpiValue}" Text="—"/></Viewbox>
+                            <TextBlock x:Name="KTimeSub" Style="{StaticResource KpiSub}" Text=" "/>
+                        </StackPanel>
+                    </Border>
+                </UniformGrid>
+
+                <WrapPanel Grid.Row="1" Margin="0,0,0,6" Orientation="Horizontal">
+                    <TextBlock l:Loc.Text="Intervallo:" Style="{StaticResource Lbl}"/>
+                    <RadioButton x:Name="R5m" Style="{StaticResource RangeButton}" l:Loc.Text="5 min" GroupName="Range" Tag="300" IsChecked="True" Checked="Range_Checked"/>
+                    <RadioButton x:Name="R30m" Style="{StaticResource RangeButton}" l:Loc.Text="30 min" GroupName="Range" Tag="1800" Checked="Range_Checked"/>
+                    <RadioButton x:Name="R2h" Style="{StaticResource RangeButton}" l:Loc.Text="2 ore" GroupName="Range" Tag="7200" Checked="Range_Checked"/>
+                    <RadioButton x:Name="R24h" Style="{StaticResource RangeButton}" l:Loc.Text="24 ore" GroupName="Range" Tag="86400" Checked="Range_Checked"/>
+                    <RadioButton x:Name="RAll" Style="{StaticResource RangeButton}" l:Loc.Text="Tutto" GroupName="Range" Tag="0" Checked="Range_Checked"/>
+                    <Rectangle Width="1" Fill="{StaticResource Line}" Margin="8,2,10,2"/>
+                    <StackPanel x:Name="PanelRange" Orientation="Horizontal" KeyDown="PanelRange_KeyDown">
+                        <TextBlock l:Loc.Text="Da" Style="{StaticResource Lbl}" Margin="0,0,4,0"/>
+                        <DatePicker x:Name="DpFrom" Width="112" SelectedDateFormat="Short" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtFromTime" Width="62" Margin="3,0,10,0" l:Loc.Tip="Ora di inizio (hh:mm:ss)"/>
+                        <TextBlock l:Loc.Text="A" Style="{StaticResource Lbl}" Margin="0,0,4,0"/>
+                        <DatePicker x:Name="DpTo" Width="112" SelectedDateFormat="Short" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtToTime" Width="62" Margin="3,0,6,0" l:Loc.Tip="Ora di fine (hh:mm:ss)"/>
+                        <Button x:Name="BtnApplyRange" l:Loc.Text="Applica" Padding="10,3" Click="BtnApplyRange_Click"
+                                l:Loc.Tip="Mostra esattamente l'intervallo indicato (Invio nei campi ora)"/>
+                    </StackPanel>
+                    <Rectangle Width="1" Fill="{StaticResource Line}" Margin="4,2,10,2"/>
+                    <ToggleButton x:Name="BtnLive" Click="BtnLive_Click" Padding="10,3" Cursor="Hand"
+                                  l:Loc.Tip="Segue il tempo reale: il grafico avanza da solo con i nuovi dati. Si disattiva quando si scorre indietro.">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <Border x:Name="Bd" Background="White" BorderBrush="#D1D5DB" BorderThickness="1" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter x:Name="Cp" TextElement.Foreground="#374151"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="Bd" Property="Background" Value="#DCFCE7"/>
+                                        <Setter TargetName="Bd" Property="BorderBrush" Value="#16A34A"/>
+                                        <Setter TargetName="Cp" Property="TextElement.Foreground" Value="#15803D"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                    <TextBlock x:Name="TxtResolution" Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                </WrapPanel>
+
+                <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="4">
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition/><RowDefinition/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <c:TimeSeriesChart x:Name="ChartQps" Grid.Row="0" Margin="0,0,0,4"/>
+                        <c:TimeSeriesChart x:Name="ChartLat" Grid.Row="1" Margin="0,0,0,4"/>
+                        <c:TimeSeriesChart x:Name="ChartFail" Grid.Row="2"/>
+                        <DockPanel Grid.Row="3" Margin="58,2,14,0">
+                            <TextBlock x:Name="TxtViewInfo" DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                            <ScrollBar x:Name="ScrollHistory" Orientation="Horizontal" Height="16" Scroll="ScrollHistory_Scroll"
+                                       l:Loc.Tip="Scorre lo storico del test. Sui grafici: rotella = scorre, Ctrl+rotella = zoom, trascinamento = scorre, doppio clic = tempo reale."/>
+                        </DockPanel>
+                    </Grid>
+                </Border>
+
+                <GridSplitter Grid.Row="3" Height="8" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+                <TabControl Grid.Row="4" x:Name="Tabs" Background="White" BorderBrush="{StaticResource Line}" SelectionChanged="Tabs_SelectionChanged">
+                    <TabItem l:Loc.Text="Eventi">
+                        <DataGrid x:Name="GridEvents">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn l:Loc.Text="Ora" Binding="{Binding Time}" Width="135"/>
+                                <DataGridTextColumn l:Loc.Text="Livello" Binding="{Binding Level}" Width="60"/>
+                                <DataGridTextColumn l:Loc.Text="Categoria" Binding="{Binding Category}" Width="80"/>
+                                <DataGridTextColumn l:Loc.Text="Messaggio" Binding="{Binding Message}" Width="*"/>
+                            </DataGrid.Columns>
+                            <DataGrid.RowStyle>
+                                <Style TargetType="DataGridRow">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Level}" Value="WARN"><Setter Property="Background" Value="#FFFBEB"/></DataTrigger>
+                                        <DataTrigger Binding="{Binding Level}" Value="ERROR"><Setter Property="Background" Value="#FEF2F2"/></DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </DataGrid.RowStyle>
+                        </DataGrid>
+                    </TabItem>
+                    <TabItem l:Loc.Text="Ultimi fallimenti">
+                        <DataGrid x:Name="GridFailures">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn l:Loc.Text="Ora" Binding="{Binding Time}" Width="135"/>
+                                <DataGridTextColumn l:Loc.Text="Nome" Binding="{Binding Name}" Width="220"/>
+                                <DataGridTextColumn l:Loc.Text="Tipo" Binding="{Binding Type}" Width="60"/>
+                                <DataGridTextColumn l:Loc.Text="Esito" Binding="{Binding Outcome}" Width="110"/>
+                                <DataGridTextColumn l:Loc.Text="Latenza ms" Binding="{Binding Latency}" Width="80"/>
+                                <DataGridTextColumn l:Loc.Text="Dettaglio" Binding="{Binding Detail}" Width="*"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </TabItem>
+                    <TabItem l:Loc.Text="Esiti">
+                        <DataGrid x:Name="GridOutcomes">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn l:Loc.Text="Esito" Binding="{Binding Name}" Width="200"/>
+                                <DataGridTextColumn l:Loc.Text="Query" Binding="{Binding Count}" Width="140"/>
+                                <DataGridTextColumn Header="%" Binding="{Binding Pct}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </TabItem>
+                    <TabItem l:Loc.Text="Per query">
+                        <DataGrid x:Name="GridTemplates">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn l:Loc.Text="Query" Binding="{Binding Query}" Width="*"/>
+                                <DataGridTextColumn l:Loc.Text="Completate" Binding="{Binding Completed}" Width="100"/>
+                                <DataGridTextColumn l:Loc.Text="Successo" Binding="{Binding Success}" Width="90"/>
+                                <DataGridTextColumn l:Loc.Text="Timeout" Binding="{Binding Timeouts}" Width="80"/>
+                                <DataGridTextColumn l:Loc.Text="Errori" Binding="{Binding Errors}" Width="80"/>
+                                <DataGridTextColumn l:Loc.Text="Latenza media" Binding="{Binding AvgLatency}" Width="100"/>
+                                <DataGridTextColumn l:Loc.Text="Flag AA" Binding="{Binding Aa}" Width="80"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+        </Grid>
+
+        <!-- ============ Barra di stato ============ -->
+        <Border Grid.Row="2" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="12,5" Margin="0,10,0,0">
+            <DockPanel>
+                <TextBlock x:Name="TxtStatusRight" DockPanel.Dock="Right" Foreground="{StaticResource Muted}"/>
+                <TextBlock x:Name="TxtStatus" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
+            </DockPanel>
+        </Border>
+    </Grid>
+</Window>

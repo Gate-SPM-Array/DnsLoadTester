@@ -1,0 +1,18 @@
+DNS Load Tester utilizza i seguenti componenti di terze parti:
+
+.NET Runtime, Windows Presentation Foundation (WPF), ASP.NET Core (solo nei test)
+  https://github.com/dotnet
+  Licenza: MIT
+
+MsQuic (msquic.dll, redistribuita con il pacchetto per DoQ e DoH su HTTP/3)
+  https://github.com/microsoft/msquic
+  Licenza: MIT
+
+xUnit.net, Microsoft.NET.Test.Sdk, coverlet (solo per i test, non inclusi nel pacchetto)
+  https://github.com/xunit/xunit — Licenza: Apache License 2.0
+  https://github.com/microsoft/vstest — Licenza: MIT
+  https://github.com/coverlet-coverage/coverlet — Licenza: MIT
+
+Nota: DNS Load Tester è stato scritto da zero. Non contiene codice di dnspyre
+(https://github.com/Tantalor93/dnspyre, licenza MIT), preso come riferimento funzionale
+per le opzioni di un benchmark DNS (protocolli, concorrenza, durata, tipi di query, report).

@@ -1,0 +1,205 @@
+# =====================================================================================
+# DNS Load Tester – elenco query "realistico" basato sui principali domini Internet
+# Versione 1.0
+#
+# USO CONSIGLIATO
+#   Test di un RESOLVER RICORSIVO (DNS aziendale, del provider, forwarder):
+#   attivare "Flag RD" e lasciare "Considera NXDOMAIN una risposta valida".
+#   Ordine consigliato: "Casuale", per simulare un traffico misto.
+#
+#   NON adatto a un server AUTORITATIVO: risponderebbe REFUSED per zone che non ospita.
+#   NON puntare il test sui name server autoritativi dei domini qui elencati
+#   (Microsoft, Google, Amazon, ecc.): sarebbe un carico su infrastruttura di terzi.
+#
+# Formato: nome TIPO. Le righe che iniziano con # sono ignorate.
+# =====================================================================================
+
+# --- Microsoft ----------------------------------------------------------------------
+microsoft.com A
+microsoft.com AAAA
+microsoft.com MX
+microsoft.com TXT
+microsoft.com NS
+www.microsoft.com A
+www.microsoft.com AAAA
+login.microsoftonline.com A
+outlook.office365.com A
+outlook.office.com A
+autodiscover.outlook.com A
+teams.microsoft.com A
+graph.microsoft.com A
+portal.azure.com A
+management.azure.com A
+windowsupdate.microsoft.com A
+update.microsoft.com A
+go.microsoft.com A
+bing.com A
+www.bing.com AAAA
+live.com A
+office.com A
+sharepoint.com A
+onedrive.live.com A
+github.com A
+api.github.com A
+linkedin.com A
+www.linkedin.com AAAA
+skype.com A
+
+# --- Google -------------------------------------------------------------------------
+google.com A
+google.com AAAA
+google.com MX
+google.com TXT
+google.com NS
+google.com SOA
+www.google.com A
+www.google.com AAAA
+www.google.it A
+accounts.google.com A
+mail.google.com A
+gmail.com MX
+drive.google.com A
+docs.google.com A
+apis.google.com A
+fonts.googleapis.com A
+www.googleapis.com A
+play.google.com A
+youtube.com A
+www.youtube.com AAAA
+i.ytimg.com A
+googlevideo.com NS
+gstatic.com A
+www.gstatic.com A
+dns.google A
+dns.google HTTPS
+
+# --- Amazon / AWS -------------------------------------------------------------------
+amazon.com A
+amazon.com MX
+amazon.com TXT
+amazon.com NS
+www.amazon.com A
+www.amazon.it A
+amazon.it MX
+aws.amazon.com A
+console.aws.amazon.com A
+s3.amazonaws.com A
+ec2.eu-south-1.amazonaws.com A
+s3.eu-central-1.amazonaws.com A
+cloudfront.net NS
+primevideo.com A
+images-na.ssl-images-amazon.com A
+
+# --- Apple --------------------------------------------------------------------------
+apple.com A
+apple.com MX
+apple.com TXT
+www.apple.com A
+www.apple.com AAAA
+icloud.com A
+icloud.com MX
+captive.apple.com A
+mesu.apple.com A
+itunes.apple.com A
+
+# --- Meta ---------------------------------------------------------------------------
+facebook.com A
+facebook.com AAAA
+www.facebook.com A
+instagram.com A
+www.instagram.com AAAA
+whatsapp.com A
+web.whatsapp.com A
+static.xx.fbcdn.net A
+
+# --- Altri grandi servizi e CDN -----------------------------------------------------
+cloudflare.com A
+cloudflare.com HTTPS
+www.cloudflare.com AAAA
+one.one.one.one A
+akamai.com A
+akamaihd.net NS
+fastly.com A
+netflix.com A
+www.netflix.com A
+spotify.com A
+open.spotify.com A
+x.com A
+twitter.com A
+wikipedia.org A
+www.wikipedia.org AAAA
+it.wikipedia.org A
+zoom.us A
+salesforce.com A
+oracle.com A
+adobe.com A
+dropbox.com A
+paypal.com A
+paypal.com TXT
+openai.com A
+anthropic.com A
+digicert.com A
+letsencrypt.org A
+ocsp.digicert.com A
+
+# --- Principali domini italiani -----------------------------------------------------
+gov.it NS
+governo.it A
+agid.gov.it A
+acn.gov.it A
+inps.it A
+www.inps.it A
+agenziaentrate.gov.it A
+poste.it A
+poste.it MX
+posteitaliane.it A
+spid.gov.it A
+pagopa.gov.it A
+io.italia.it A
+aruba.it A
+aruba.it MX
+pec.it MX
+register.it A
+tim.it A
+vodafone.it A
+windtre.it A
+fastweb.it A
+iliad.it A
+enel.it A
+eni.com A
+intesasanpaolo.com A
+unicredit.it A
+bancobpm.it A
+repubblica.it A
+www.repubblica.it A
+corriere.it A
+www.corriere.it A
+ilsole24ore.com A
+ansa.it A
+rai.it A
+www.raiplay.it A
+mediaset.it A
+subito.it A
+trenitalia.com A
+italotreno.com A
+ita-airways.com A
+
+# --- Record di servizio (SRV) e di sicurezza (CAA, DNSSEC) --------------------------
+_sip._tls.microsoft.com SRV
+_sipfederationtls._tcp.microsoft.com SRV
+_xmpp-server._tcp.gmail.com SRV
+_imaps._tcp.gmail.com SRV
+_submission._tcp.gmail.com SRV
+google.com CAA
+microsoft.com CAA
+amazon.com CAA
+cloudflare.com DNSKEY
+cloudflare.com DS
+paypal.com DS
+
+# --- Nomi inesistenti (NXDOMAIN): evitano la cache e caricano il resolver -----------
+# Ogni query genera un'etichetta casuale diversa. Togliere il # per attivarle.
+# Attenzione: verso un resolver ognuna provoca anche una query agli autoritativi
+# del dominio; usare con moderazione.
+# {rnd}.example.com A
+# {rnd}.example.org AAAA

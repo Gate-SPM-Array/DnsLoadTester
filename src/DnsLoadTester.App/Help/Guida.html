@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guida DNS Load Tester</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#1f2937; --muted:#6b7280; --line:#e5e7eb; --soft:#f6f7f9; --accent:#1d4ed8; --accent-soft:#eaf0fe;
+  --ok:#15803d; --ok-soft:#ecfdf3; --warn:#b45309; --warn-soft:#fff8e6; --bad:#b91c1c; --bad-soft:#fef2f2; --code:#f3f4f6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111418; --fg:#e5e7eb; --muted:#9aa3af; --line:#2a2f37; --soft:#181c22; --accent:#7aa2ff; --accent-soft:#1a2340;
+    --ok:#4ade80; --ok-soft:#10241a; --warn:#fbbf24; --warn-soft:#2a2210; --bad:#f87171; --bad-soft:#2a1416; --code:#1d2229;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Segoe UI",system-ui,-apple-system,sans-serif}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1260px;margin:0 auto}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:22px 14px 30px 20px;border-right:1px solid var(--line);font-size:13.5px}
+nav .brand{font-weight:700;font-size:15px;margin-bottom:2px}
+nav .ver{color:var(--muted);font-size:12px;margin-bottom:14px}
+nav ol{list-style:none;padding:0;margin:0}
+nav li{margin:1px 0}
+nav a{display:block;padding:3px 8px;border-radius:5px;color:var(--fg);text-decoration:none}
+nav a:hover{background:var(--soft);color:var(--accent)}
+nav ol ol{padding-left:12px;font-size:12.8px}
+nav ol ol a{color:var(--muted)}
+main{padding:28px 40px 60px;min-width:0}
+h1{font-size:28px;line-height:1.25;margin:0 0 6px}
+h2{font-size:21px;margin:44px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 6px}
+h4{font-size:14.5px;margin:18px 0 4px}
+p{margin:8px 0}
+.lead{font-size:16.5px;color:var(--muted);max-width:820px}
+a{color:var(--accent)}
+code,kbd{font-family:Consolas,"Cascadia Mono",monospace;font-size:.9em;background:var(--code);padding:1px 5px;border-radius:4px}
+kbd{border:1px solid var(--line);border-bottom-width:2px}
+pre{background:var(--code);padding:10px 14px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.45}
+table{border-collapse:collapse;width:100%;margin:10px 0 14px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+td:first-child{white-space:nowrap}
+td.wrap{white-space:normal}
+.box{border-radius:8px;padding:10px 14px;margin:12px 0;border-left:4px solid}
+.why{background:var(--accent-soft);border-color:var(--accent)}
+.tip{background:var(--ok-soft);border-color:var(--ok)}
+.warn{background:var(--warn-soft);border-color:var(--warn)}
+.bad{background:var(--bad-soft);border-color:var(--bad)}
+.box > b:first-child{display:block;margin-bottom:2px}
+.el{font-weight:600}
+.tag{display:inline-block;font-size:11.5px;padding:0 6px;border-radius:9px;background:var(--soft);border:1px solid var(--line);color:var(--muted);vertical-align:1px}
+.n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;margin-right:6px;flex:none}
+/* schema dell'interfaccia */
+.mock{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--soft);margin:12px 0 6px;font-size:12.5px}
+.mock .z{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;display:flex;align-items:flex-start;gap:4px;min-height:34px}
+.mock .row{display:grid;gap:6px;margin-bottom:6px}
+.mock .cols{display:grid;grid-template-columns:30% 1fr;gap:6px}
+.mock .stack{display:grid;gap:6px}
+.mock .tall{min-height:120px}
+.legend{columns:2;column-gap:28px;font-size:13.5px;margin:6px 0 4px}
+.legend div{break-inside:avoid;margin:3px 0;display:flex;gap:4px}
+footer{margin-top:50px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:900px){table{display:block;overflow-x:auto}td:first-child{white-space:normal}.layout{grid-template-columns:1fr}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 16px 50px}.legend{columns:1}}
+@media print{nav{display:none}.layout{display:block}main{padding:0}h2{break-after:avoid}.box,table,pre{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Indice">
+  <div class="brand">DNS Load Tester</div>
+  <div class="ver">Guida d'uso e tecnica · v1.2</div>
+  <ol>
+    <li><a href="#intro">1. Scopo e principi</a></li>
+    <li><a href="#avvio">2. Installazione e file</a></li>
+    <li><a href="#schema">3. Mappa dell'interfaccia</a></li>
+    <li><a href="#toolbar">4. Barra dei comandi</a></li>
+    <li><a href="#config">5. Pannello di configurazione</a>
+      <ol>
+        <li><a href="#dest">5.1 Destinazione</a></li>
+        <li><a href="#query">5.2 Query</a></li>
+        <li><a href="#carico">5.3 Carico e durata</a></li>
+        <li><a href="#salute">5.4 Stato del server</a></li>
+        <li><a href="#log">5.5 Log ed export</a></li>
+        <li><a href="#avvisi">5.6 Avvisi</a></li>
+      </ol>
+    </li>
+    <li><a href="#cruscotto">6. Cruscotto</a>
+      <ol>
+        <li><a href="#kpi">6.1 Indicatori (KPI)</a></li>
+        <li><a href="#vista">6.2 Intervallo e navigazione</a></li>
+        <li><a href="#grafici">6.3 Grafici</a></li>
+        <li><a href="#schede">6.4 Schede</a></li>
+        <li><a href="#stato">6.5 Barra di stato</a></li>
+      </ol>
+    </li>
+    <li><a href="#verifica">7. Verifica destinazione</a></li>
+    <li><a href="#esiti">8. Esiti e codici</a></li>
+    <li><a href="#metodo">9. Metodologia di misura</a></li>
+    <li><a href="#file">10. File della sessione</a></li>
+    <li><a href="#report">11. Report e analisi a posteriori</a>
+      <ol>
+        <li><a href="#logquery">11.3 Analisi del log per query</a></li>
+      </ol>
+    </li>
+    <li><a href="#scenari">12. Scenari di test</a></li>
+    <li><a href="#lettura">13. Come leggere i risultati</a></li>
+    <li><a href="#limiti">14. Limiti e avvertenze</a></li>
+    <li><a href="#problemi">15. Risoluzione dei problemi</a></li>
+    <li><a href="#tasti">16. Mouse e tastiera</a></li>
+    <li><a href="#glossario">17. Glossario</a></li>
+    <li><a href="#versioni">18. Versioni</a></li>
+  </ol>
+</nav>
+
+<main>
+<h1>DNS Load Tester – guida d'uso e tecnica</h1>
+<p class="lead">Utility per misurare nel tempo (minuti, ore o giorni) la capacità di un server DNS di rispondere alle query, con cruscotto in tempo reale e registrazione completa su disco. Questa guida descrive ogni elemento dell'interfaccia e, per ciascuno, il razionale tecnico: cosa misura, perché è fatto così e come interpretarlo.</p>
+
+<!-- ============================================================ -->
+<h2 id="intro">1. Scopo e principi</h2>
+<p>Il programma genera un flusso controllato di query DNS verso un server, misura per ognuna esito e latenza, aggrega i risultati al secondo e al minuto e valuta continuamente lo stato del server (OK, degradato, non disponibile). È pensato in primo luogo per <b>server autoritativi esterni</b>, ma funziona anche verso resolver ricorsivi.</p>
+<p>Principi di progetto, utili per capire tutto il resto:</p>
+<ul>
+  <li><b>Carico a ritmo fisso (open loop).</b> Le query partono secondo una griglia temporale prestabilita (ad esempio una ogni 50 ms a 20 qps), indipendentemente da quanto rapidamente risponde il server. È il modo corretto per osservare la degradazione: se il ritmo dipendesse dalle risposte, un server lento riceverebbe meno carico e sembrerebbe migliore di quanto è.</li>
+  <li><b>Nessun dato perso.</b> Ogni query completata è registrata su disco; aggregati ed eventi sono scritti e svuotati sul disco ogni secondo. Un crash, un blackout o la chiusura forzata non cancellano ciò che è già stato misurato.</li>
+  <li><b>Percentili esatti per intervallo.</b> Le latenze sono raccolte in istogrammi; i percentili del minuto o dell'intera sessione sono calcolati sull'insieme delle query, non come media dei percentili dei secondi (che sarebbe matematicamente scorretta).</li>
+  <li><b>Misura dal punto di vista del client.</b> La latenza è il tempo dall'invio alla ricezione completa della risposta, misurato sulla postazione di prova: comprende il percorso di rete. È ciò che percepisce un resolver reale che interroga il server da quella rete.</li>
+</ul>
+<div class="box warn"><b>Autorizzazione</b>Usare il programma solo verso server propri o con autorizzazione scritta del titolare. Anche un carico moderato, protratto per ore verso un'infrastruttura di terzi, può essere interpretato come un attacco e attivare contromisure o segnalazioni.</div>
+
+<!-- ============================================================ -->
+<h2 id="avvio">2. Installazione e file</h2>
+<p>La versione portable non richiede installazione né runtime .NET: tutto è contenuto in <code>DnsLoadTester.exe</code>. Copiare la cartella dove si preferisce (anche su chiavetta) e avviare l'eseguibile.</p>
+<table>
+  <tr><th>File / cartella</th><th>Funzione</th></tr>
+  <tr><td><code>DnsLoadTester.exe</code></td><td class="wrap">Programma (Windows 10/11 x64, Windows Server 2016 o successivi).</td></tr>
+  <tr><td><code>msquic.dll</code></td><td class="wrap">Libreria QUIC: necessaria per DoQ e per DoH su HTTP/3. Deve restare accanto all'eseguibile. QUIC richiede inoltre Windows 11 o Windows Server 2022 o successivi.</td></tr>
+  <tr><td><code>Sessioni\</code></td><td class="wrap">Cartella predefinita delle sessioni di test (una sottocartella per sessione). Modificabile in <a href="#log">Log ed export</a>.</td></tr>
+  <tr><td><code>DnsLoadTester.settings.json</code></td><td class="wrap">Ultima configurazione usata, salvata automaticamente a ogni avvio di test e ricaricata all'apertura del programma.</td></tr>
+  <tr><td><code>DnsLoadTester.history.json</code></td><td class="wrap">Cronologia degli ultimi 30 server, URL DoH e nomi TLS usati, e lingua scelta.</td></tr>
+  <tr><td><code>lang\en.json</code></td><td class="wrap">Traduzione inglese dell'interfaccia. È anche incorporata nell'eseguibile; il file nella cartella, se presente, ha la precedenza. Chiunque può correggerla o aggiungere una lingua (vedi sotto).</td></tr>
+  <tr><td><code>Guida_DnsLoadTester_v….html</code></td><td class="wrap">Questa guida: è incorporata nell'eseguibile e viene estratta alla prima apertura con <kbd>F1</kbd>.</td></tr>
+  <tr><td><code>crash.log</code></td><td class="wrap">Creato solo in caso di errori imprevisti dell'interfaccia: utile per la diagnosi.</td></tr>
+</table>
+<p>Se la cartella dell'eseguibile non è scrivibile (ad esempio sotto <code>C:\Program Files</code>), impostazioni, cronologia e guida vanno in <code>%LOCALAPPDATA%\DnsLoadTester</code> e le sessioni in <code>Documenti\DnsLoadTester\Sessioni</code>. La barra di stato mostra all'avvio la cartella dati effettiva.</p>
+<h3>Lingua dell'interfaccia</h3>
+<p>Il programma parla <b>italiano</b> e <b>inglese</b>. Al primo avvio la lingua segue quella di Windows (italiano se Windows è in italiano, altrimenti inglese); si cambia con il pulsante <b>🌐 Lingua</b> nella barra dei comandi. La scelta viene salvata e applicata al riavvio, che il programma propone subito (durante un test viene solo memorizzata). Sono tradotti interfaccia, messaggi, eventi e report HTML; restano invariati, per non rompere chi li elabora, le intestazioni e i valori dei CSV (ad esempio la colonna <code>health</code>) e gli stati salvati in <code>summary.json</code>.</p>
+<p>Le traduzioni sono file JSON leggibili: il testo italiano scritto nel codice è la chiave, la traduzione il valore (<code>"Avvia test": "Start test"</code>). Per correggere l'inglese o aggiungere una lingua basta un file <code>lang\&lt;codice&gt;.json</code> accanto all'eseguibile (menu 🌐 → <i>Apri la cartella delle traduzioni</i>): i testi mancanti restano in italiano e una traduzione che altera i segnaposto <code>{0}</code> viene ignorata. È lo stesso schema degli altri progetti dello stesso autore (AdbSync, Pietrasanta Traceroute GUI).</p>
+<div class="box tip"><b>SmartScreen</b>L'eseguibile non è firmato digitalmente: al primo avvio Windows può mostrare «PC protetto». Scegliere «Ulteriori informazioni» → «Esegui comunque».</div>
+
+<!-- ============================================================ -->
+<h2 id="schema">3. Mappa dell'interfaccia</h2>
+<p>La finestra è divisa in tre parti: barra dei comandi in alto, configurazione a sinistra, cruscotto a destra. I numeri rimandano alle sezioni della guida.</p>
+<div class="mock" role="img" aria-label="Schema della finestra principale">
+  <div class="row"><div class="z"><span class="n">1</span>Barra dei comandi: avvio, arresto, verifica, report, sessioni, analisi del log, profili, lingua, guida · stato del test</div></div>
+  <div class="cols">
+    <div class="stack">
+      <div class="z"><span class="n">2</span>Destinazione</div>
+      <div class="z"><span class="n">3</span>Query</div>
+      <div class="z"><span class="n">4</span>Carico e durata</div>
+      <div class="z"><span class="n">5</span>Valutazione dello stato</div>
+      <div class="z"><span class="n">6</span>Log ed export</div>
+      <div class="z"><span class="n">7</span>Avvisi</div>
+    </div>
+    <div class="stack">
+      <div class="z"><span class="n">8</span>Indicatori: stato · risposte/s · successo · latenze · totali · errori · tempo</div>
+      <div class="z"><span class="n">9</span>Intervallo: 5 min … Tutto · Da / A · Tempo reale</div>
+      <div class="z tall"><span class="n">10</span>Grafici: throughput · latenza · fallimenti</div>
+      <div class="z"><span class="n">11</span>Barra di scorrimento dello storico</div>
+      <div class="z"><span class="n">12</span>Schede: eventi · ultimi fallimenti · esiti · per query</div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:6px;margin-bottom:0"><div class="z"><span class="n">13</span>Barra di stato: messaggi · righe di log · connessioni · risposte tardive · coda</div></div>
+</div>
+<div class="legend">
+  <div><span class="n">1</span><a href="#toolbar">Barra dei comandi</a></div>
+  <div><span class="n">2</span><a href="#dest">Destinazione</a></div>
+  <div><span class="n">3</span><a href="#query">Query</a></div>
+  <div><span class="n">4</span><a href="#carico">Carico e durata</a></div>
+  <div><span class="n">5</span><a href="#salute">Valutazione dello stato</a></div>
+  <div><span class="n">6</span><a href="#log">Log ed export</a></div>
+  <div><span class="n">7</span><a href="#avvisi">Avvisi</a></div>
+  <div><span class="n">8</span><a href="#kpi">Indicatori</a></div>
+  <div><span class="n">9</span><a href="#vista">Intervallo e navigazione</a></div>
+  <div><span class="n">10</span><a href="#grafici">Grafici</a></div>
+  <div><span class="n">11</span><a href="#vista">Scorrimento dello storico</a></div>
+  <div><span class="n">12</span><a href="#schede">Schede</a></div>
+  <div><span class="n">13</span><a href="#stato">Barra di stato</a></div>
+</div>
+<p>Il divisore verticale tra configurazione e cruscotto e quello orizzontale sopra le schede si trascinano per ridimensionare le aree. Durante un test il pannello di configurazione è bloccato: la configurazione di una sessione non può cambiare mentre è in corso.</p>
+
+<!-- ============================================================ -->
+<h2 id="toolbar">4. Barra dei comandi</h2>
+<table>
+  <tr><th>Elemento</th><th>Funzione e note tecniche</th></tr>
+  <tr><td class="el">▶ Avvia test</td><td class="wrap">Controlla la configurazione (gli errori bloccano l'avvio), mostra un riepilogo con destinazione, carico, durata ed eventuali avvisi e chiede conferma. Poi risolve il nome del server (una sola volta), crea la cartella di sessione e avvia i worker. L'indirizzo effettivamente usato è registrato in <code>session.json</code> e nel report.</td></tr>
+  <tr><td class="el">■ Arresta</td><td class="wrap">Arresto ordinato: non parte più nessuna nuova query, si attendono quelle in volo (al massimo il timeout), si chiudono gli intervalli, si scrivono il riepilogo finale e il report. Lo stesso accade se si chiude la finestra durante un test (viene chiesta conferma).</td></tr>
+  <tr><td class="el">Verifica destinazione</td><td class="wrap">Invia una sola volta ciascuna query dell'elenco (massimo 20), in sequenza, con tutte le impostazioni correnti, e mostra il risultato in una finestra dedicata. Non crea sessioni né file. Vedi <a href="#verifica">capitolo 7</a>. Da usare sempre prima di un test lungo.</td></tr>
+  <tr><td class="el">Cartella sessione</td><td class="wrap">Apre in Esplora risorse la cartella della sessione corrente, dell'ultima eseguita o di quella aperta con «Apri sessione».</td></tr>
+  <tr><td class="el">Apri report</td><td class="wrap">Apre nel browser il report HTML dell'ultima sessione conclusa (o della sessione aperta).</td></tr>
+  <tr><td class="el">Report parziale</td><td class="wrap">Solo durante un test: forza la scrittura del riepilogo e genera un report con i dati raccolti fino a quel momento, senza interrompere la misura. Utile per un aggiornamento intermedio a un cliente durante un test di più giorni.</td></tr>
+  <tr><td class="el">Report da sessione…</td><td class="wrap">Rigenera il report di una qualsiasi cartella di sessione, anche interrotta da un crash. Il report è ricostruito dai soli file su disco; ogni rigenerazione crea un nuovo file numerato (<code>report_v1.1.html</code>, <code>v1.2</code>, …) senza sovrascrivere i precedenti.</td></tr>
+  <tr><td class="el">Apri sessione…</td><td class="wrap">Carica nel cruscotto una sessione salvata per analizzarla: grafici completi navigabili, indicatori riferiti all'intera sessione, eventi, esiti e risultati per query. È una vista in sola lettura. Vedi <a href="#report">capitolo 11</a>.</td></tr>
+  <tr><td class="el">Analizza log query…</td><td class="wrap">Apre la finestra di analisi grafica dei file <code>queries_NNNN.csv</code>: ogni singola query su un grafico tempo × latenza, filtri per nome, tipo ed esito, grafici aggregati, tabelle ed esportazione. Precarica la sessione corrente o l'ultima aperta, se ha un log per query. Vedi <a href="#logquery">§11.3</a>.</td></tr>
+  <tr><td class="el">Carica profilo…</td><td class="wrap">Carica una configurazione salvata (JSON). Accetta anche il <code>session.json</code> di una sessione precedente: è il modo più rapido per ripetere esattamente un test.</td></tr>
+  <tr><td class="el">Salva profilo…</td><td class="wrap">Salva la configurazione corrente in un file JSON (nome proposto con numero di versione).</td></tr>
+  <tr><td class="el">🌐 Lingua</td><td class="wrap">Elenco delle lingue disponibili (italiano, inglese ed eventuali file aggiunti in <code>lang\</code>) e comando per aprire la cartella delle traduzioni. La lingua scelta si applica al riavvio.</td></tr>
+  <tr><td class="el">? Guida (F1)</td><td class="wrap">Apre questa guida nel browser predefinito, nella lingua dell'interfaccia.</td></tr>
+  <tr><td class="el">Stato (a destra)</td><td class="wrap">Pronto · Avvio in corso · <span style="color:var(--ok)">● TEST IN CORSO</span> · Arresto in corso · Test terminato · Terminato con errori · Sessione salvata (analisi).</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="config">5. Pannello di configurazione</h2>
+<p>Tutti i valori sono salvati automaticamente all'avvio di ogni test e ripresentati alla successiva apertura del programma. I campi numerici accettano solo numeri interi, salvo le soglie percentuali (che accettano anche la virgola decimale).</p>
+
+<h3 id="dest">5.1 Destinazione</h3>
+<table>
+  <tr><th>Elemento</th><th>Funzione e razionale tecnico</th></tr>
+  <tr><td class="el">Protocollo</td><td class="wrap">
+    <b>UDP</b> (RFC 1035): il trasporto normale del DNS, una query per datagramma; è ciò che usa la grande maggioranza dei resolver verso gli autoritativi.<br>
+    <b>TCP</b> (RFC 7766): obbligatorio per le risposte grandi (troncate in UDP) e per i trasferimenti di zona; un autoritativo deve rispondere anche in TCP.<br>
+    <b>DoT</b> – DNS over TLS (RFC 7858), porta 853: DNS su connessione TCP cifrata.<br>
+    <b>DoH</b> – DNS over HTTPS (RFC 8484): DNS dentro richieste HTTPS; usato da browser e sistemi operativi.<br>
+    <b>DoQ</b> – DNS over QUIC (RFC 9250), porta 853 UDP: cifrato come DoT, ma senza il blocco in testa alla coda di TCP.<br>
+    Cambiando protocollo, la porta passa al valore standard (53, 853 o 443) se era impostata su uno di questi.</td></tr>
+  <tr><td class="el">Server</td><td class="wrap">Indirizzo IPv4, IPv6 o nome del server. Il campo è una casella modificabile con <b>cronologia</b>: la freccia mostra gli ultimi 30 valori usati, digitando si ottiene il completamento automatico. Un valore entra in cronologia solo quando viene usato davvero (avvio di un test o verifica riuscita).<br>
+    Se si indica un nome, viene risolto <b>una sola volta</b> all'avvio con il resolver di sistema e per tutta la sessione si usa quell'indirizzo: la misura riguarda così sempre lo stesso nodo, anche se il nome ne ha diversi.</td></tr>
+  <tr><td class="el">⋯ (cronologia)</td><td class="wrap">Menu per rimuovere dalla cronologia la voce corrente, svuotare la cronologia di quel campo o svuotare tutta la cronologia (server, URL, nomi TLS).</td></tr>
+  <tr><td class="el">Porta</td><td class="wrap">Porta del servizio: 53 per UDP/TCP, 853 per DoT/DoQ.</td></tr>
+  <tr><td class="el">Famiglia IP</td><td class="wrap">Usata solo se il server è indicato per nome. <b>IP automatico</b> preferisce IPv4 se disponibile; <b>Solo IPv4</b> / <b>Solo IPv6</b> forzano la famiglia. Utile per confrontare le due raggiungibilità dello stesso server, che spesso hanno percorsi di rete diversi.</td></tr>
+  <tr><td class="el">URL DoH</td><td class="wrap">Solo DoH: URL completo del servizio (es. <code>https://dns.esempio.it/dns-query</code>), con cronologia come il campo Server. Il nome nell'URL è risolto dal sistema a ogni nuova connessione HTTP. Il proxy di sistema è ignorato: la misura deve riguardare il server, non un proxy intermedio.</td></tr>
+  <tr><td class="el">Metodo POST / GET</td><td class="wrap"><b>POST</b> invia il messaggio DNS nel corpo (<code>application/dns-message</code>); <b>GET</b> lo codifica in base64url nel parametro <code>?dns=</code>. GET è memorizzabile nelle cache HTTP: per questo l'RFC 8484 raccomanda ID = 0, e il programma usa ID 0 sempre in DoH.</td></tr>
+  <tr><td class="el">Versione HTTP</td><td class="wrap"><b>HTTP/1.1</b>: una richiesta alla volta per connessione. <b>HTTP/2</b>: più richieste contemporanee sulla stessa connessione (multiplexing), è il caso più comune. <b>HTTP/3</b>: HTTP su QUIC (richiede Windows 11 / Server 2022). La versione è <i>esatta</i>: se il server non la supporta la query fallisce invece di ripiegare su un'altra versione, così il test misura ciò che è stato chiesto.</td></tr>
+  <tr><td class="el">Nome TLS (SNI)</td><td class="wrap">Solo DoT e DoQ: nome che il certificato del server deve contenere, inviato nell'estensione SNI. Vuoto = uguale al campo Server. Indispensabile quando il server è indicato per IP ma il certificato riporta un nome. Ha cronologia.</td></tr>
+  <tr><td class="el">Non verificare il certificato</td><td class="wrap">Disattiva il controllo del certificato (catena, scadenza, nome). Serve solo in laboratorio o con certificati interni: in un test reale un certificato non valido è un problema da segnalare, non da aggirare.</td></tr>
+  <tr><td class="el">Riusa le connessioni</td><td class="wrap">Non presente per UDP. Attivo (predefinito): ogni worker mantiene la propria connessione TCP/TLS/QUIC/HTTP e la riusa, come fa un resolver reale. Disattivo: una nuova connessione per ogni query, quindi la latenza include ogni volta l'handshake (TCP e TLS). Confrontare i due casi misura il costo dell'handshake e la capacità del server di accettare nuove connessioni.<br>
+    Se il server chiude una connessione inattiva, il programma la riapre in modo trasparente con un solo nuovo tentativo, senza contarlo come errore.</td></tr>
+</table>
+
+<h3 id="query">5.2 Query</h3>
+<table>
+  <tr><th>Elemento</th><th>Funzione e razionale tecnico</th></tr>
+  <tr><td class="el">Elenco query</td><td class="wrap">Una query per riga, nella forma <code>nome TIPO</code> (es. <code>dominio.it SOA</code>). Sono accettati anche <code>TIPO nome</code>, il formato CSV <code>nome,TIPO</code> e il solo <code>nome</code> (si usa il tipo predefinito). Le righe vuote e quelle che iniziano con <code>#</code> o <code>;</code> sono ignorate. I nomi internazionalizzati (con accenti) sono convertiti automaticamente in punycode. Le righe non valide sono scartate con un avviso, visibile negli eventi.</td></tr>
+  <tr><td class="el"><code>{rnd}</code></td><td class="wrap">Segnaposto sostituito a ogni query da 10 caratteri casuali <code>[a-z0-9]</code>, ad esempio <code>{rnd}.dominio.it</code> → <code>k8dm1c75ls.dominio.it</code>. Ogni nome è diverso, quindi nessuna cache intermedia può rispondere: su un autoritativo verifica la generazione delle risposte NXDOMAIN; su un resolver ricorsivo costringe a interrogare gli autoritativi a ogni query. È anche la tecnica degli attacchi «random subdomain» (water torture): usarla con moderazione e solo con autorizzazione.</td></tr>
+  <tr><td class="el">Carica…</td><td class="wrap">Carica l'elenco da un file <code>.txt</code> o <code>.csv</code> (sostituisce il contenuto). Oltre 200.000 righe viene chiesta conferma.</td></tr>
+  <tr><td class="el">Salva…</td><td class="wrap">Salva l'elenco corrente in un file di testo UTF-8. Se l'elenco proviene da un file caricato, propone lo stesso nome con versione incrementata (<code>_v1.0</code> → <code>_v1.1</code>); altrimenti propone <code>query_&lt;etichetta o server&gt;_v1.0.txt</code>.</td></tr>
+  <tr><td class="el">Tipo predefinito</td><td class="wrap">Tipo di record per le righe senza tipo. Si può scegliere dall'elenco o digitare qualsiasi tipo noto, oppure <code>TYPEnnn</code> / un numero per tipi non in elenco (RFC 3597).</td></tr>
+  <tr><td class="el">Ordine</td><td class="wrap"><b>In sequenza</b>: le query si susseguono ciclicamente nell'ordine dell'elenco, distribuzione perfettamente uniforme. <b>Casuale</b>: ogni query è estratta a caso; simula meglio un traffico reale ed evita schemi ripetitivi che alcuni meccanismi di rate limiting riconoscono.</td></tr>
+  <tr><td class="el">Flag RD</td><td class="wrap">Recursion Desired. <b>Disattivato</b> (predefinito): come un resolver che interroga un autoritativo; è l'impostazione corretta per testare un autoritativo. <b>Attivato</b>: chiede la risoluzione ricorsiva, indispensabile per testare un resolver. Molti resolver rispondono REFUSED alle query senza RD (protezione dal «cache snooping»). Un autoritativo ben configurato, invece, risponde solo per le proprie zone anche con RD attivo: se risolvesse nomi di terzi sarebbe un <i>open resolver</i>, sfruttabile per attacchi di amplificazione.</td></tr>
+  <tr><td class="el">EDNS0 + buffer</td><td class="wrap">Aggiunge il record OPT (RFC 6891) e annuncia la dimensione massima di risposta UDP accettata. Il valore consigliato è <b>1232</b> byte (DNS Flag Day 2020): evita la frammentazione IP, causa frequente di risposte perse. Senza EDNS le risposte UDP sono limitate a 512 byte e quelle più grandi arrivano troncate (flag TC). Con EDNS il programma interpreta anche l'RCODE esteso e gli Extended DNS Error.</td></tr>
+  <tr><td class="el">DNSSEC (DO)</td><td class="wrap">Imposta il bit DNSSEC OK: il server include le firme (RRSIG) nelle risposte delle zone firmate. Le risposte diventano molto più grandi: è un buon test di carico per banda e frammentazione, e verifica che il server serva correttamente i record DNSSEC.</td></tr>
+</table>
+
+<h3 id="carico">5.3 Carico e durata</h3>
+<table>
+  <tr><th>Elemento</th><th>Funzione e razionale tecnico</th></tr>
+  <tr><td class="el">QPS obiettivo</td><td class="wrap">Query al secondo complessive da inviare. Le query sono distribuite in modo regolare su una griglia temporale assoluta (query <i>n</i> all'istante <i>n</i>/QPS), non a raffiche. <b>0</b> = nessun limite: ogni worker invia la query successiva appena riceve la risposta (prova di massimo throughput, da usare con estrema cautela verso server esterni).</td></tr>
+  <tr><td class="el">Worker</td><td class="wrap">Numero di query contemporaneamente «in volo» (da 1 a 5000). Ogni worker ha un solo canale (socket o connessione) e una sola query alla volta. Per la legge di Little servono almeno <code>QPS × latenza media</code> worker per sostenere il ritmo in condizioni normali, ma per mantenerlo anche quando il server non risponde (ogni query attende il timeout) ne servono <code>QPS × timeout</code>. Esempio: 200 qps con timeout di 2 s → 400 worker. Con meno worker, durante un'interruzione il carico inviato cala da solo (si vede nella linea «Inviate/s»): il riquadro Avvisi lo segnala.</td></tr>
+  <tr><td class="el">Timeout (ms)</td><td class="wrap">Attesa massima di una risposta (da 50 a 60.000 ms), oltre la quale la query è contata come TIMEOUT. I resolver reali attendono tipicamente da 400 ms a 2 s prima di riprovare o passare a un altro name server: un valore in questa fascia rende il test realistico. Una query in timeout è conteggiata nel secondo in cui il timeout scade.</td></tr>
+  <tr><td class="el">Rampa (s)</td><td class="wrap">Durata della salita graduale: il ritmo cresce linearmente da zero al QPS obiettivo. Evita di colpire il server con il carico pieno a freddo (cache, connessioni, eventuali sistemi anti-DDoS) e permette di osservare a quale livello iniziano i problemi.</td></tr>
+  <tr><td class="el">Durata</td><td class="wrap">Giorni, ore e minuti. Allo scadere il test si arresta in modo ordinato e genera il report.</td></tr>
+  <tr><td class="el">Senza limite di durata</td><td class="wrap">Il test prosegue finché non si preme Arresta o si chiude il programma.</td></tr>
+</table>
+<div class="box why"><b>Perché una griglia temporale fissa</b>Se il programma è in ritardo (server lento o worker insufficienti), le query non inviate in tempo <i>non</i> vengono recuperate con una raffica: oltre 1 secondo di ritardo la griglia viene riallineata. Una raffica di recupero falserebbe la misura nel momento peggiore. Il ritardo diventa invece visibile: la linea «Inviate/s» scende sotto l'obiettivo. È il comportamento che evita l'errore metodologico noto come <i>coordinated omission</i>.</div>
+
+<h3 id="salute">5.4 Valutazione dello stato del server</h3>
+<p>Ogni secondo il programma valuta le query completate in una finestra mobile e assegna uno stato. Gli stessi criteri alimentano l'indicatore «Stato server», la striscia colorata del report, la colonna <code>health</code> degli aggregati e gli eventi.</p>
+<table>
+  <tr><th>Elemento</th><th>Funzione</th></tr>
+  <tr><td class="el">Finestra di osservazione (s)</td><td class="wrap">Numero di secondi considerati (da 1 a 300, predefinito 10). Finestre brevi reagiscono subito ma sono «nervose»; finestre lunghe sono stabili ma segnalano più tardi.</td></tr>
+  <tr><td class="el">Degradato se successo sotto (%)</td><td class="wrap">Predefinito 99%: più di 1 query su 100 senza risposta valida nella finestra porta lo stato a DEGRADATO.</td></tr>
+  <tr><td class="el">… oppure p95 oltre (ms)</td><td class="wrap">Predefinito 500 ms: anche con tutte le risposte, se il 5% più lento supera la soglia lo stato è DEGRADATO. Le risposte lente equivalgono quasi a risposte perse, perché i resolver vanno in timeout e ritentano.</td></tr>
+  <tr><td class="el">Non disponibile se successo sotto (%)</td><td class="wrap">Predefinito 50%. Lo stato è NON DISPONIBILE anche quando nella finestra sono state inviate query e non ne è stata completata nessuna. Deve essere inferiore alla soglia di degrado.</td></tr>
+  <tr><td class="el">NXDOMAIN valido</td><td class="wrap">Se attivo (predefinito), NXDOMAIN è una risposta corretta: il server ha risposto che il nome non esiste, ed è la risposta attesa per le query <code>{rnd}</code>. Disattivarlo solo se tutti i nomi dell'elenco devono esistere.</td></tr>
+</table>
+<div class="box why"><b>Isteresi</b>Il peggioramento è segnalato subito; il miglioramento solo dopo che il nuovo stato è rimasto stabile per tanti secondi quanti sono quelli della finestra. Così un singolo secondo buono durante un'interruzione non produce una raffica di eventi OK/NON DISPONIBILE alternati. Un <b>episodio</b> è contato ogni volta che si passa da OK (o nessun dato) a DEGRADATO o NON DISPONIBILE.</div>
+<p>«Successo» significa risposta NOERROR (comprese le risposte senza record, dette NODATA), più NXDOMAIN se l'opzione è attiva. SERVFAIL, REFUSED, gli altri RCODE, i timeout e gli errori di trasporto sono fallimenti.</p>
+
+<h3 id="log">5.5 Log ed export</h3>
+<table>
+  <tr><th>Elemento</th><th>Funzione e razionale tecnico</th></tr>
+  <tr><td class="el">Cartella</td><td class="wrap">Cartella in cui viene creata una sottocartella per ogni sessione, con nome <code>AAAAMMGG_hhmmss_PROTOCOLLO_server[_etichetta]</code>. Il pulsante «…» apre la selezione.</td></tr>
+  <tr><td class="el">Etichetta sessione</td><td class="wrap">Testo facoltativo aggiunto al nome della cartella (cliente, ticket, scenario). Facilita il riordino di molte sessioni.</td></tr>
+  <tr><td class="el">Log per query</td><td class="wrap"><b>Tutte le query</b>: una riga per ogni query (massimo dettaglio forense). <b>Solo fallimenti</b>: registra solo timeout, errori e risposte non valide; adatto ai test di più giorni ad alto ritmo. <b>Disattivato</b>: solo aggregati ed eventi. In tutti i casi gli aggregati al secondo e al minuto restano completi.</td></tr>
+  <tr><td class="el">Rotazione file (MB)</td><td class="wrap">Dimensione oltre la quale il log per query passa a un nuovo file (<code>queries_0001.csv</code>, <code>queries_0002.csv</code>, …). File di qualche centinaio di MB restano gestibili con Excel, editor e strumenti di analisi.</td></tr>
+  <tr><td class="el">Formato CSV</td><td class="wrap"><b>Excel italiano</b>: separatore <code>;</code> e virgola decimale, si apre con un doppio clic in Excel configurato in italiano. <b>Standard</b>: separatore <code>,</code> e punto decimale (RFC 4180), per Python, Power BI, SIEM. Il formato vale per tutti i CSV della sessione ed è registrato in <code>session.json</code>, così il report li rilegge correttamente.</td></tr>
+</table>
+<p>Lo spazio del log per query è di circa 110 byte per query: ad esempio 100 qps per 7 giorni ≈ 6,7 GB.</p>
+
+<h3 id="avvisi">5.6 Avvisi</h3>
+<p>Il riquadro giallo in fondo alla configurazione si aggiorna mentre si modificano i valori e segnala situazioni non bloccanti ma importanti:</p>
+<ul>
+  <li><b>Worker insufficienti</b>: con il numero di worker indicato, se il server smette di rispondere il carico scenderebbe a circa <code>worker ÷ timeout</code> qps. È indicato il numero minimo per mantenere l'obiettivo.</li>
+  <li><b>QPS illimitato</b>: promemoria sull'uso responsabile.</li>
+  <li><b>Spazio su disco</b>: stima del log per query oltre i 2 GB.</li>
+  <li><b>Certificato non verificato</b>.</li>
+</ul>
+<p>Gli stessi avvisi compaiono nella finestra di conferma dell'avvio.</p>
+
+<!-- ============================================================ -->
+<h2 id="cruscotto">6. Cruscotto</h2>
+
+<h3 id="kpi">6.1 Indicatori (KPI)</h3>
+<p>Aggiornati una volta al secondo, alla chiusura di ogni secondo di misura.</p>
+<table>
+  <tr><th>Indicatore</th><th>Valore principale</th><th>Riga secondaria</th></tr>
+  <tr><td class="el">Stato server</td><td class="wrap">OK (verde), DEGRADATO (giallo), NON DISPONIBILE (rosso), NESSUN DATO (grigio), secondo i criteri del <a href="#salute">§5.4</a>.</td><td class="wrap">Da quanto tempo dura lo stato attuale · numero di episodi di degrado dall'inizio.</td></tr>
+  <tr><td class="el">Risposte/s</td><td class="wrap">Risposte DNS (qualsiasi RCODE) ricevute nell'ultimo secondo chiuso.</td><td class="wrap">Query inviate nello stesso secondo · QPS obiettivo · picco di risposte/s della sessione.</td></tr>
+  <tr><td class="el">Successo (ultimi N s)</td><td class="wrap">Percentuale di successi nella finestra di osservazione.</td><td class="wrap">Percentuale di successo cumulativa dell'intera sessione.</td></tr>
+  <tr><td class="el">Latenza p50 / p95 / p99</td><td class="wrap">Percentili della latenza nella finestra (ms). p50 = mediana; p95 = 95 risposte su 100 sono più veloci; p99 = coda lenta.</td><td class="wrap">p95 e p99 cumulativi della sessione.</td></tr>
+  <tr><td class="el">Query completate</td><td class="wrap">Query concluse in qualsiasi modo (risposta, timeout, errore).</td><td class="wrap">Query inviate · percentuale di risposte con flag AA (autoritative).</td></tr>
+  <tr><td class="el">Timeout / errori</td><td class="wrap">Totale timeout / totale errori di trasporto e di protocollo.</td><td class="wrap">Risposte SERVFAIL e REFUSED (sono risposte, ma contano come fallimenti).</td></tr>
+  <tr><td class="el">Tempo trascorso</td><td class="wrap">Durata del test.</td><td class="wrap">Tempo rimanente, oppure «fino ad arresto manuale».</td></tr>
+</table>
+<p>Quando si analizza una sessione salvata (<a href="#report">Apri sessione</a>), gli indicatori si riferiscono all'intera sessione: lo stato riporta l'esito finale, la riga secondaria la disponibilità complessiva, «Risposte/s» la media.</p>
+<div class="box why"><b>Perché la percentuale di AA</b>Il flag AA (Authoritative Answer) dice che la risposta viene dal server titolare della zona e non da una cache. Testando un autoritativo deve essere vicino al 100%: un valore basso indica che si stanno interrogando nomi di zone che il server non ospita, o che si sta interrogando un resolver.</div>
+
+<h3 id="vista">6.2 Intervallo e navigazione nello storico</h3>
+<p>I grafici conservano in memoria <b>l'intera sessione</b>, sia al secondo sia al minuto (circa 32 byte al secondo: una settimana di test occupa una ventina di MB). Nulla esce dalla vista: si può sempre tornare indietro.</p>
+<table>
+  <tr><th>Elemento</th><th>Funzione</th></tr>
+  <tr><td class="el">5 min · 30 min · 2 ore · 24 ore</td><td class="wrap">Ampiezza della finestra visibile. In tempo reale la finestra segue gli ultimi dati; in modalità storico resta fermo l'istante finale e cambia l'ampiezza.</td></tr>
+  <tr><td class="el">Tutto</td><td class="wrap">Mostra l'intera sessione dall'inizio a ora.</td></tr>
+  <tr><td class="el">Da / A</td><td class="wrap">Data (selettore a calendario) e ora (<code>hh:mm:ss</code> o <code>hh:mm</code>) di inizio e fine. <b>Applica</b> (o <kbd>Invio</kbd> in un campo ora) mostra esattamente quell'intervallo e passa alla modalità storico. Quando non li si sta modificando, i campi riportano l'intervallo attualmente visibile: si possono usare anche solo per leggere con precisione l'intervallo mostrato.</td></tr>
+  <tr><td class="el">● Tempo reale / ⏸ Storico</td><td class="wrap">Verde «Tempo reale»: la vista avanza da sola con i nuovi dati. Appena si scorre indietro, si zooma o si applica un intervallo Da/A la vista si ferma (modalità storico) e il pulsante diventa «Storico – torna al tempo reale»: un clic riporta all'ultimo istante.</td></tr>
+  <tr><td class="el">Risoluzione</td><td class="wrap">Quando la porzione di dati visibile è al massimo di 2 ore si usano i dati al secondo (anche con la vista «24 ore» all'inizio di un test); oltre, quelli al minuto. Al minuto, p95 e p99 sono i percentili di tutte le query di quel minuto (non medie), quindi rappresentano fedelmente il minuto. Il minuto in corso compare alla sua chiusura.</td></tr>
+  <tr><td class="el">Barra di scorrimento</td><td class="wrap">Sotto i grafici: rappresenta tutta la sessione, il cursore è grande quanto la finestra visibile. Trascinarlo, cliccare sulla barra o sulle frecce scorre lo storico; portarlo all'estremità destra riattiva il tempo reale. A destra della barra è indicato l'intervallo visibile e la sua durata.</td></tr>
+  <tr><td class="el">Mouse sui grafici</td><td class="wrap"><b>Rotella</b>: scorre nel tempo (verso l'alto = indietro). <b>Ctrl + rotella</b>: zoom centrato sul puntatore. <b>Trascinamento</b> con il tasto sinistro: sposta la vista. <b>Doppio clic</b>: torna al tempo reale. <b>Passaggio del mouse</b>: linea verticale e riquadro con i valori di ogni serie nel punto. I tre grafici sono sempre sincronizzati.</td></tr>
+</table>
+<p>La vista resta navigabile anche a test concluso: è il modo più rapido per ispezionare un episodio di degrado senza aprire i CSV.</p>
+
+<h3 id="grafici">6.3 Grafici</h3>
+<table>
+  <tr><th>Grafico</th><th>Serie</th><th>Lettura</th></tr>
+  <tr><td class="el">Throughput</td><td class="wrap"><span style="color:#94a3b8">- - Inviate/s</span> · <span style="color:#2563eb">Risposte/s</span> · <span style="color:#16a34a">Successi/s</span></td><td class="wrap">In condizioni normali le tre linee coincidono con il QPS obiettivo. <b>Risposte sotto Inviate</b> = il server perde query. <b>Successi sotto Risposte</b> = il server risponde ma con errori (SERVFAIL, REFUSED). <b>Inviate sotto l'obiettivo</b> = il client non riesce a sostenere il ritmo (worker insufficienti rispetto a latenza o timeout).</td></tr>
+  <tr><td class="el">Latenza</td><td class="wrap"><span style="color:#16a34a">p50</span> · <span style="color:#f59e0b">p95</span> · <span style="color:#dc2626">p99</span></td><td class="wrap">p50 è la latenza «tipica», dominata dalla rete; p95 e p99 mostrano la coda lenta, il primo sintomo di saturazione del server. I timeout non entrano nelle latenze: compaiono nel grafico dei fallimenti.</td></tr>
+  <tr><td class="el">Fallimenti</td><td class="wrap"><span style="color:#dc2626">% fallite</span> · <span style="color:#7c3aed">% timeout</span></td><td class="wrap">Percentuale delle query completate nell'intervallo. Se le due linee coincidono i fallimenti sono tutti timeout; se «% fallite» è sopra «% timeout», ci sono anche risposte di errore o errori di trasporto (dettaglio nelle schede). Asse limitato a 100%.</td></tr>
+</table>
+<ul>
+  <li><b>Linea dello zero rialzata</b>: lo zero è disegnato qualche pixel sopra il bordo inferiore con una linea più marcata, così una serie a zero (ad esempio «% timeout» sempre nullo) resta visibile e non si confonde con la cornice.</li>
+  <li><b>Inviluppo min-max</b>: quando un pixel contiene più punti (finestre lunghe), viene tracciato il segmento dal minimo al massimo. I picchi brevi non scompaiono mai per effetto della scala.</li>
+  <li><b>Area grigia</b>: oltre la fine dei dati disponibili (all'inizio di un test, o a sessione conclusa).</li>
+  <li><b>Interruzioni della linea</b>: secondi senza alcuna risposta (nessun valore di latenza) o assenza di dati.</li>
+  <li>L'asse verticale si adatta ai valori visibili.</li>
+</ul>
+
+<h3 id="schede">6.4 Schede</h3>
+<table>
+  <tr><th>Scheda</th><th>Contenuto</th></tr>
+  <tr><td class="el">Eventi</td><td class="wrap">Avvio e fine della sessione, ogni cambio di stato del server con durata dello stato precedente e motivazione (successo, timeout e p95 della finestra), avvisi sulle query, salti temporali (PC sospeso), errori interni. Righe gialle = WARN, rosse = ERROR. A video restano gli ultimi 5000 eventi; l'elenco completo è in <code>events.csv</code>.</td></tr>
+  <tr><td class="el">Ultimi fallimenti</td><td class="wrap">Le ultime 200 query fallite: ora al millisecondo, nome effettivo (anche quello generato da <code>{rnd}</code>), tipo, esito, latenza, dettaglio (messaggio di errore o Extended DNS Error). Non disponibile per le sessioni riaperte: in quel caso si usano i <code>queries_*.csv</code>.</td></tr>
+  <tr><td class="el">Esiti</td><td class="wrap">Conteggio e percentuale di ogni esito (RCODE e tipi di errore) sull'intera sessione.</td></tr>
+  <tr><td class="el">Per query</td><td class="wrap">Una riga per ogni voce dell'elenco: query completate, successo, timeout, errori, latenza media, percentuale di risposte autoritative. Fa emergere i nomi problematici (ad esempio una zona delegata male o un record che produce SERVFAIL).</td></tr>
+</table>
+<p>Le righe delle tabelle si possono selezionare e copiare con <kbd>Ctrl</kbd>+<kbd>C</kbd> (intestazioni incluse) per incollarle in Excel. Mentre si selezionano righe, la tabella non si aggiorna, per non perdere la selezione.</p>
+
+<h3 id="stato">6.5 Barra di stato</h3>
+<table>
+  <tr><th>Elemento</th><th>Significato</th></tr>
+  <tr><td class="el">Messaggio (sinistra)</td><td class="wrap">Cartella della sessione in corso, esito delle operazioni sui file, cartella dati all'avvio.</td></tr>
+  <tr><td class="el">Log query</td><td class="wrap">Righe scritte nel log per query e numero di file (rotazione).</td></tr>
+  <tr><td class="el">Connessioni</td><td class="wrap">Connessioni TCP/TLS/QUIC aperte dall'inizio (non conteggiate per DoH, gestito dal client HTTP). Con il riuso attivo deve restare vicino al numero di worker: se cresce continuamente, il server chiude le connessioni (limiti di inattività o di query per connessione).</td></tr>
+  <tr><td class="el">Risposte tardive</td><td class="wrap">Risposte UDP arrivate dopo il timeout della propria query (riconosciute dall'ID diverso da quello atteso e scartate), o risposte con ID errato su TCP. Molte risposte tardive indicano un timeout troppo corto rispetto alla latenza reale del server.</td></tr>
+  <tr><td class="el">Coda</td><td class="wrap">Risultati in attesa di elaborazione statistica. Normalmente prossima a zero; se cresce in modo stabile, il PC di prova non riesce a elaborare i risultati al ritmo richiesto e il carico va ridotto.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="verifica">7. Verifica destinazione</h2>
+<p>Invia ciascuna query dell'elenco (massimo 20) una sola volta, con un solo worker e con tutte le impostazioni correnti (protocollo, RD, EDNS, DO, timeout, TLS). Serve a controllare, prima di un test lungo, che il server risponda come previsto.</p>
+<table>
+  <tr><th>Elemento</th><th>Significato</th></tr>
+  <tr><td class="el">Intestazione</td><td class="wrap">Destinazione indicata → indirizzo effettivamente contattato.</td></tr>
+  <tr><td class="el">Sintesi</td><td class="wrap">Risposte valide sul totale e quante hanno il flag AA. In verde se tutte valide, in arancione altrimenti.</td></tr>
+  <tr><td class="el">Suggerimento ➜</td><td class="wrap">Diagnosi automatica dei casi più comuni: REFUSED con RD disattivato (si sta interrogando un resolver), REFUSED anche con RD attivo (indirizzo non autorizzato o zone non ospitate), risposte senza AA (server non autoritativo per quei nomi).</td></tr>
+  <tr><td class="el">Colonne</td><td class="wrap"><b>Nome</b> effettivo · <b>Tipo</b> · <b>Esito</b> · <b>Latenza ms</b> · <b>AA</b> · <b>Risposte</b> (record nella sezione answer) · <b>Byte</b> (dimensione della risposta) · <b>Dettaglio</b> (errore o Extended DNS Error).</td></tr>
+</table>
+<div class="box tip"><b>Dimensione delle risposte su DoT/DoH</b>Sui canali cifrati molti server riempiono le risposte fino a 468 byte (padding EDNS, RFC 8467) per non rivelare, attraverso la dimensione, quale nome è stato chiesto. Non è un errore.</div>
+
+<!-- ============================================================ -->
+<h2 id="esiti">8. Esiti e codici</h2>
+<h3>Risposte DNS (RCODE)</h3>
+<table>
+  <tr><th>Esito</th><th>Significato</th><th>Successo?</th></tr>
+  <tr><td>NOERROR</td><td class="wrap">Risposta corretta (anche senza record: NODATA).</td><td>Sì</td></tr>
+  <tr><td>NXDOMAIN</td><td class="wrap">Il nome non esiste. Risposta corretta per i nomi <code>{rnd}</code>.</td><td>Configurabile</td></tr>
+  <tr><td>SERVFAIL</td><td class="wrap">Il server non riesce a rispondere: zona non caricata, problema DNSSEC, backend guasto; su un resolver, autoritativi irraggiungibili.</td><td>No</td></tr>
+  <tr><td>REFUSED</td><td class="wrap">Il server rifiuta la query: zona non ospitata, policy, ACL sull'indirizzo sorgente, ricorsione non consentita.</td><td>No</td></tr>
+  <tr><td>FORMERR / NOTIMP</td><td class="wrap">Query non compresa o funzione non supportata (ad esempio alcuni tipi o EDNS).</td><td>No</td></tr>
+  <tr><td>Altri (RCODEn)</td><td class="wrap">Codici meno comuni, inclusi gli RCODE estesi EDNS (es. BADVERS).</td><td>No</td></tr>
+</table>
+<h3>Esiti senza risposta</h3>
+<table>
+  <tr><th>Esito</th><th>Significato</th></tr>
+  <tr><td>TIMEOUT</td><td class="wrap">Nessuna risposta entro il timeout. In UDP una risposta che arriva dopo è contata tra le «risposte tardive».</td></tr>
+  <tr><td>NET_ERROR</td><td class="wrap">Errore di rete: connessione rifiutata, host irraggiungibile, «ICMP port unreachable (ConnectionReset)» in UDP (nessun servizio sulla porta), errore QUIC.</td></tr>
+  <tr><td>TLS_ERROR</td><td class="wrap">Handshake TLS fallito: certificato non attendibile, scaduto o con nome diverso; protocollo non accettato.</td></tr>
+  <tr><td>HTTP_ERROR</td><td class="wrap">DoH: risposta HTTP diversa da 200 (es. 400, 404, 415, 503).</td></tr>
+  <tr><td>PROTOCOL_ERROR</td><td class="wrap">Risposta non valida o non pertinente: malformata, senza bit di risposta, ID o domanda diversi dalla query inviata, connessione chiusa senza risposta.</td></tr>
+</table>
+<h3>Extended DNS Error (RFC 8914)</h3>
+<p>Molti server allegano alle risposte un codice che spiega il motivo del rifiuto o dell'errore. Il programma lo decodifica e lo mostra nella colonna Dettaglio, ad esempio <code>EDE 18 Prohibited</code> (rifiuto per policy), <code>EDE 20 Not Authoritative</code>, <code>EDE 6 DNSSEC Bogus</code>, <code>EDE 22 No Reachable Authority</code>, <code>EDE 15 Blocked</code>, <code>EDE 3 Stale Answer</code>. Il dettaglio compare anche nella tabella degli errori principali del report.</p>
+
+<!-- ============================================================ -->
+<h2 id="metodo">9. Metodologia di misura</h2>
+<h3>Generazione del carico</h3>
+<ul>
+  <li><b>Worker</b>: ciascuno ha un proprio canale (socket UDP «connesso», connessione TCP/TLS, connessione QUIC o client HTTP condiviso per DoH) e una query alla volta. Questo isola i worker tra loro e rende la concorrenza esattamente quella configurata.</li>
+  <li><b>Scheduler</b>: istante di invio della query <i>n</i> = <i>n</i> / QPS dall'inizio (con la rampa, una curva che fa crescere il ritmo linearmente). Se l'invio è in ritardo di oltre 1 s la griglia viene riallineata invece di recuperare con una raffica.</li>
+  <li><b>Durante il test</b> Windows non va in sospensione automatica e la risoluzione del timer di sistema è portata a 1 ms, per una cadenza regolare anche a pochi qps.</li>
+</ul>
+<h3>Costruzione e validazione delle query</h3>
+<ul>
+  <li>ID casuale per ogni query in UDP, TCP e DoT; ID 0 in DoH e DoQ, come richiesto dagli RFC 8484 e 9250.</li>
+  <li>Classe IN; flag RD secondo configurazione (CD sempre a 0); record OPT se EDNS è attivo (buffer e bit DO configurabili).</li>
+  <li>Una risposta è accettata solo se ha il bit QR, lo stesso ID e la stessa sezione domanda della query (confronto senza distinzione tra maiuscole e minuscole). È la stessa verifica che fa un resolver per difendersi dalle risposte contraffatte: garantisce che ogni risposta conteggiata sia davvero quella della query misurata.</li>
+  <li>In UDP le risposte con ID diverso sono scartate e si continua ad attendere quella giusta fino al timeout (risposte tardive).</li>
+  <li>In TCP/DoT, dopo un timeout la connessione viene chiusa e riaperta (lo stato del flusso non è più affidabile).</li>
+  <li>In DoQ ogni query usa un nuovo stream bidirezionale sulla connessione QUIC del worker (ALPN <code>doq</code>, inattività massima 30 s).</li>
+</ul>
+<h3>Misura della latenza</h3>
+<ul>
+  <li>Cronometro ad alta risoluzione avviato subito prima dell'invio e fermato alla ricezione completa della risposta.</li>
+  <li>Se per quella query è necessario aprire una connessione (primo invio di un worker, connessione chiusa dal server, riuso disattivato), la latenza include l'handshake TCP/TLS/QUIC, come accade a un client reale.</li>
+  <li>Le latenze sono raccolte in un istogramma log-lineare: risoluzione di 1 µs fino a 64 µs, poi 32 intervalli per ogni raddoppio, con errore relativo massimo intorno al 3% su tutta la scala fino a decine di secondi. I percentili di secondo, minuto, finestra e sessione sono calcolati dall'istogramma dell'insieme corrispondente.</li>
+</ul>
+<h3>Aggregazione</h3>
+<ul>
+  <li>Ogni risultato è attribuito al secondo in cui la query si conclude. Ogni secondo chiuso produce una riga in <code>intervals_1s.csv</code>; ogni 60 secondi una riga in <code>intervals_1m.csv</code>.</li>
+  <li>Le statistiche sono elaborate da un unico thread dedicato, separato dai worker: il percorso di invio non ha lock e la misura non è disturbata dall'elaborazione.</li>
+  <li>Se il PC resta bloccato o sospeso per più di un'ora, l'intervallo mancante non viene riempito di secondi vuoti: è registrato un evento di «salto temporale».</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="file">10. File della sessione</h2>
+<p>Ogni sessione è una cartella autonoma: contiene tutto ciò che serve per analizzarla, rigenerare il report o riaprirla nel cruscotto, anche su un altro PC.</p>
+<table>
+  <tr><th>File</th><th>Contenuto</th><th>Scrittura</th></tr>
+  <tr><td><code>session.json</code></td><td class="wrap">Configurazione completa, versione del programma, PC e sistema operativo, indirizzo risolto, formato CSV.</td><td class="wrap">All'avvio</td></tr>
+  <tr><td><code>queries_NNNN.csv</code></td><td class="wrap">Una riga per query (vedi sotto). Con rotazione per dimensione.</td><td class="wrap">Svuotato su disco ogni secondo</td></tr>
+  <tr><td><code>intervals_1s.csv</code></td><td class="wrap">Aggregati al secondo.</td><td class="wrap">Una riga al secondo, subito su disco</td></tr>
+  <tr><td><code>intervals_1m.csv</code></td><td class="wrap">Aggregati al minuto (stesse colonne).</td><td class="wrap">Una riga al minuto</td></tr>
+  <tr><td><code>events.csv</code></td><td class="wrap">Eventi: <code>timestamp, level, category, message</code>.</td><td class="wrap">A ogni evento</td></tr>
+  <tr><td><code>app.log</code></td><td class="wrap">Log testuale leggibile degli stessi eventi e di eventuali errori interni.</td><td class="wrap">A ogni evento</td></tr>
+  <tr><td><code>summary.json</code></td><td class="wrap">Totali, istogramma completo delle latenze, esiti, errori principali, risultati per query, secondi per stato di salute.</td><td class="wrap">Ogni 30 s e alla fine, in modo atomico</td></tr>
+  <tr><td><code>report_vX.Y.html</code></td><td class="wrap">Report finale e rigenerazioni successive.</td><td class="wrap">Alla fine o su richiesta</td></tr>
+</table>
+<h4>Colonne di <code>queries_NNNN.csv</code></h4>
+<table>
+  <tr><th>Colonna</th><th>Contenuto</th></tr>
+  <tr><td>timestamp</td><td class="wrap">Istante di conclusione (ora locale, millisecondi).</td></tr>
+  <tr><td>elapsed_ms</td><td class="wrap">Millisecondi dall'avvio del test.</td></tr>
+  <tr><td>seq · worker</td><td class="wrap">Numero progressivo della query · worker che l'ha eseguita.</td></tr>
+  <tr><td>qname · qtype</td><td class="wrap">Nome effettivo (con <code>{rnd}</code> già sostituito) · tipo.</td></tr>
+  <tr><td>outcome · rcode</td><td class="wrap">Esito (vedi <a href="#esiti">cap. 8</a>) · RCODE numerico (vuoto se non c'è risposta).</td></tr>
+  <tr><td>latency_ms</td><td class="wrap">Latenza; per i timeout è il tempo atteso.</td></tr>
+  <tr><td>resp_bytes · answers</td><td class="wrap">Dimensione della risposta · numero di record nella sezione answer.</td></tr>
+  <tr><td>aa · tc</td><td class="wrap">Flag Authoritative Answer · flag Truncated (1/0).</td></tr>
+  <tr><td>detail</td><td class="wrap">Messaggio di errore o Extended DNS Error.</td></tr>
+</table>
+<h4>Colonne di <code>intervals_1s.csv</code> e <code>intervals_1m.csv</code></h4>
+<p><code>timestamp</code> (inizio dell'intervallo), <code>elapsed_s</code>, <code>duration_s</code>, <code>sent</code>, <code>completed</code>, <code>responses</code>, <code>success</code>, <code>success_pct</code>, <code>noerror</code>, <code>nxdomain</code>, <code>servfail</code>, <code>refused</code>, <code>other_rcode</code>, <code>timeouts</code>, <code>net_errors</code>, <code>other_errors</code>, <code>truncated</code>, <code>bytes_in</code>, <code>qps_sent</code>, <code>qps_responses</code>, <code>lat_min_ms</code>, <code>lat_avg_ms</code>, <code>lat_p50_ms</code>, <code>lat_p90_ms</code>, <code>lat_p95_ms</code>, <code>lat_p99_ms</code>, <code>lat_max_ms</code>, <code>health</code> (stato nel secondo; nel file al minuto, lo stato peggiore del minuto).</p>
+<div class="box why"><b>Perché questi file</b>Il log per query è il dato grezzo, utile per le analisi forensi (quale nome, quando, con quale errore). Gli aggregati sono la base di grafici e report e restano piccoli anche dopo giorni di test. <code>summary.json</code> contiene l'istogramma completo: da esso si ricalcolano percentili esatti senza rileggere milioni di righe. La scrittura continua e atomica rende la sessione utilizzabile anche se interrotta.</div>
+
+<!-- ============================================================ -->
+<h2 id="report">11. Report e analisi a posteriori</h2>
+<h3>Report HTML</h3>
+<p>Generato automaticamente alla fine di ogni test, è un file HTML autonomo (si apre in qualsiasi browser e si stampa in PDF con <kbd>Ctrl</kbd>+<kbd>P</kbd> → «Salva come PDF»). Contiene:</p>
+<ul>
+  <li>sintesi con giudizio (verde, giallo o rosso) e indicatori principali, tra cui la disponibilità (secondi non «non disponibili» sui secondi misurati);</li>
+  <li>striscia dello stato di salute nel tempo e grafici di throughput, latenza e fallimenti;</li>
+  <li>distribuzione delle latenze per fasce;</li>
+  <li>tabelle di esiti, latenze complessive (min, media, p50, p90, p95, p99, p99,9, max), disponibilità per stato, altri indicatori, errori principali, risultati per query;</li>
+  <li>eventi significativi, configurazione completa del test ed elenco dei file della sessione.</li>
+</ul>
+<p>Per test lunghi i grafici del report usano i dati al minuto e al massimo 1500 punti: nei punti accorpati il QPS è la media, p50 la media e p95, p99 e massimo sono il valore peggiore del gruppo, così i picchi restano visibili.</p>
+<h3>Apri sessione…</h3>
+<p>Carica nel cruscotto una sessione salvata, anche di altri PC o interrotta. I grafici sono ricostruiti da <code>intervals_1s.csv</code> e <code>intervals_1m.csv</code> (lettura a flusso: anche sessioni di più giorni si aprono in pochi secondi) e sono pienamente navigabili; indicatori, esiti e risultati per query vengono da <code>summary.json</code>, gli eventi da <code>events.csv</code>. Non si può aprire una sessione mentre è in corso un test.</p>
+
+<h3 id="logquery">11.3 Analisi del log per query</h3>
+<p>Il pulsante <b>Analizza log query…</b> apre una finestra dedicata all'analisi grafica a posteriori dei file <code>queries_NNNN.csv</code>, cioè del dato grezzo: una riga per ogni query. Serve quando gli aggregati non bastano, per capire <i>quali</i> query sono fallite, quando esattamente, con quale latenza e su quale nome.</p>
+<table>
+  <tr><th>Elemento</th><th>Funzione e razionale tecnico</th></tr>
+  <tr><td class="el">Apri file… / Apri cartella sessione…</td><td class="wrap">Carica uno o più file <code>queries_NNNN.csv</code> (selezione multipla) oppure tutti quelli di una cartella di sessione, nell'ordine di rotazione. Entrambi i formati CSV sono riconosciuti dall'intestazione. Le righe incomplete (ad esempio l'ultima, se il PC si è spento durante la scrittura) sono ignorate e contate. La lettura avviene in background con avanzamento e pulsante <b>Annulla</b>; i dati sono tenuti in memoria in forma compatta (circa 30 byte per query: 5 milioni di query ≈ 150 MB). Oltre 2 GB di file viene chiesta conferma.</td></tr>
+  <tr><td class="el">Nome contiene</td><td class="wrap">Filtra le query il cui nome contiene il testo indicato, senza distinzione tra maiuscole e minuscole (ad esempio <code>www</code>, o il nome di una zona).</td></tr>
+  <tr><td class="el">Tipo</td><td class="wrap">Solo un tipo di record (l'elenco mostra i tipi presenti nel log, dal più frequente).</td></tr>
+  <tr><td class="el">Esito</td><td class="wrap"><b>Tutti</b>, <b>Solo successi</b>, <b>Solo fallimenti</b>, oppure un esito preciso (NOERROR, SERVFAIL, TIMEOUT, …) tra quelli presenti nel log.</td></tr>
+  <tr><td class="el">NXDOMAIN valido</td><td class="wrap">Come nel test: decide se NXDOMAIN conta tra i successi (filtri «solo successi/fallimenti» e grafici).</td></tr>
+  <tr><td class="el">Applica filtro / Azzera</td><td class="wrap">Applica i filtri (anche con <kbd>Invio</kbd> nel campo nome) o li riporta a «tutto». Il numero di query selezionate è indicato a destra.</td></tr>
+  <tr><td class="el">Latenze in scala logaritmica</td><td class="wrap">Asse delle latenze logaritmico (predefinito): risposte da 1 ms e timeout da 2000 ms restano leggibili nello stesso grafico.</td></tr>
+  <tr><td class="el">Singole query</td><td class="wrap">Grafico a dispersione: <b>un punto per query</b>, ascissa = istante di conclusione, ordinata = latenza. Colori: <span style="color:#2563eb">risposta valida</span>, <span style="color:#ea8a0c">RCODE di errore</span> (SERVFAIL, REFUSED, …), <span style="color:#7c3aed">timeout</span> (alla quota del timeout), <span style="color:#dc2626">errore di trasporto</span>. I punti sono disegnati come immagine a livello di pixel, quindi anche milioni di query si visualizzano in un attimo; dove più query cadono nello stesso pixel prevale l'esito più grave, così un singolo problema non resta nascosto sotto migliaia di risposte corrette, e l'intensità del colore cresce con la densità. Con poche query i punti sono più grandi.</td></tr>
+  <tr><td class="el">Throughput · Latenza · Fallimenti</td><td class="wrap">Gli stessi tre grafici del cruscotto, ricalcolati sulle sole query filtrate. La risoluzione è <b>adattiva</b>: a ogni cambio di vista gli aggregati vengono ricalcolati sull'intervallo visibile, con un passo «tondo» (1 s, 2 s, 5 s … 1 giorno) tale da avere al massimo circa 1200 punti. Si può quindi passare da una settimana intera a pochi secondi mantenendo sempre il massimo dettaglio. I percentili di ogni intervallo sono calcolati esattamente sulle latenze delle risposte (metodo <i>nearest rank</i>).</td></tr>
+  <tr><td class="el">Navigazione</td><td class="wrap">Come nel cruscotto: rotella = scorre, <kbd>Ctrl</kbd>+rotella = zoom, trascinamento = sposta, doppio clic o pulsante <b>Tutto</b> = intero periodo, barra di scorrimento. I quattro grafici sono sincronizzati.</td></tr>
+  <tr><td class="el">Esiti</td><td class="wrap">Conteggio e percentuale di ogni esito nell'intervallo visibile, con i filtri applicati.</td></tr>
+  <tr><td class="el">Per nome</td><td class="wrap">Statistiche per nome e tipo nell'intervallo visibile: query, successo, timeout, errori, latenza media e p95, percentuale di flag AA. I nomi generati da <code>{rnd}</code> (prima etichetta di 10 caratteri alfanumerici) sono raggruppati come <code>{rnd}.zona</code>, altrimenti ognuno sarebbe una riga.</td></tr>
+  <tr><td class="el">Query</td><td class="wrap">Elenco delle singole query nell'intervallo visibile (prime 50.000): ora al millisecondo, nome effettivo, tipo, esito, latenza, flag AA/TC, worker, dettaglio. Restringendo la vista su un picco si ottiene subito l'elenco delle query coinvolte.</td></tr>
+  <tr><td class="el">Esporta selezione…</td><td class="wrap">Salva in un nuovo CSV, nello stesso formato del log, le query filtrate nell'intervallo visibile: utile per allegare a un ticket solo le query di un episodio. Il file esportato si può a sua volta riaprire in questa finestra.</td></tr>
+</table>
+<div class="box why"><b>Perché un'analisi sulle singole query</b>Gli aggregati al secondo dicono <i>quanto</i> e <i>quando</i>; il log per query dice <i>cosa</i>. Un 0,5% di timeout può essere distribuito in modo uniforme (perdita casuale sulla rete) oppure concentrato su un nome, un tipo o un worker (problema di una zona, di un record, di una connessione): il grafico a dispersione e la tabella «Per nome» lo distinguono a colpo d'occhio.</div>
+
+<!-- ============================================================ -->
+<h2 id="scenari">12. Scenari di test consigliati</h2>
+<h3>Server autoritativo</h3>
+<ol>
+  <li><b>Ricognizione.</b> Individuare i name server della zona (record NS) e i loro indirizzi. Verificare se sono su reti diverse: l'RFC 2182 raccomanda di distribuirli, perché un guasto di rete non li colpisca tutti insieme.</li>
+  <li><b>Coerenza.</b> Con «Verifica destinazione», interrogare <code>zona SOA</code> su ciascun name server: il numero di serie deve coincidere, altrimenti i secondari non si sincronizzano. Confrontare anche NS, MX e i record principali.</li>
+  <li><b>Protocolli.</b> Ripetere la verifica in TCP (deve funzionare), senza EDNS (risposte limitate a 512 byte, possibile TC) e con DNSSEC (DO) se la zona è firmata.</li>
+  <li><b>Disponibilità nel tempo.</b> Elenco con soli nomi delle zone ospitate più <code>{rnd}.zona A</code>, flag RD disattivato, carico basso (2–20 qps), durata 24–72 ore. Per confrontare più name server, avviare più istanze del programma in parallelo, una per server: si vede subito se i degradi sono comuni (rete condivisa) o di un solo nodo.</li>
+  <li><b>Capacità a gradini</b> (solo con autorizzazione formale). Sessioni di 10 minuti a carico crescente (es. 10, 50, 100, 200 qps) con rampa. Annotare il livello al quale salgono p95/p99 o compaiono timeout e risposte troncate.</li>
+</ol>
+<h3>Resolver ricorsivo</h3>
+<ul>
+  <li>Flag RD attivo, elenco di domini reali con ordine casuale, NXDOMAIN valido.</li>
+  <li>Il primo giro riempie la cache: da lì in poi le latenze misurano soprattutto le risposte dalla cache. Per misurare la risoluzione completa usare nomi <code>{rnd}</code> (con moderazione: ognuno genera traffico verso gli autoritativi di quel dominio).</li>
+</ul>
+<h3>Servizi cifrati (DoT, DoH, DoQ)</h3>
+<ul>
+  <li>Confrontare riuso delle connessioni attivo e disattivo per misurare il costo dell'handshake e la capacità di accettare nuove connessioni.</li>
+  <li>In DoH confrontare HTTP/1.1, HTTP/2 e HTTP/3 e i metodi GET e POST.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="lettura">13. Come leggere i risultati</h2>
+<table>
+  <tr><th>Cosa si osserva</th><th>Interpretazione probabile</th></tr>
+  <tr><td class="wrap">Inviate/s sotto l'obiettivo</td><td class="wrap">Il client non regge il ritmo: worker insufficienti rispetto a latenza o timeout. Non è un limite del server: aumentare i worker.</td></tr>
+  <tr><td class="wrap">Risposte/s sotto Inviate/s, timeout in aumento</td><td class="wrap">Il server (o la rete) perde query. Se succede oltre una certa soglia di carico ed è proporzionale al carico, è un limite di capacità o un meccanismo di rate limiting.</td></tr>
+  <tr><td class="wrap">Timeout a picchi regolari (ogni N minuti)</td><td class="wrap">Attività periodiche sul server o sulla rete: ricaricamento delle zone, backup, rotazione dei log, cambi di percorso. Confrontare gli orari con i log del server.</td></tr>
+  <tr><td class="wrap">p50 stabile, p95/p99 a picchi</td><td class="wrap">Code momentanee sul server o jitter di rete. Se i picchi coincidono con quelli di più name server su reti diverse, la causa è probabilmente vicino alla postazione di prova.</td></tr>
+  <tr><td class="wrap">Tutte le latenze salgono insieme</td><td class="wrap">Saturazione (CPU, banda, coda di rete) o cambio di percorso di rete.</td></tr>
+  <tr><td class="wrap">Risposte con flag TC, oppure timeout solo su alcune query</td><td class="wrap">Response Rate Limiting (RRL): l'autoritativo limita le risposte per indirizzo sorgente e tronca o scarta l'eccesso. Colpisce prima le risposte identiche ripetute: confrontare un elenco con un solo nome e uno con molti nomi diversi.</td></tr>
+  <tr><td class="wrap">SERVFAIL su un autoritativo</td><td class="wrap">Zona non caricata, errore di firma DNSSEC, backend del server guasto. Controllare il dettaglio EDE e la scheda «Per query».</td></tr>
+  <tr><td class="wrap">REFUSED</td><td class="wrap">Zona non ospitata, RD non consentito, ACL. Vedi il suggerimento della Verifica.</td></tr>
+  <tr><td class="wrap">Connessioni in crescita continua</td><td class="wrap">Il server chiude le connessioni (inattività o limite di query per connessione): comportamento legittimo, ma ogni riapertura costa un handshake.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="limiti">14. Limiti e avvertenze</h2>
+<ul>
+  <li><b>Un solo indirizzo sorgente.</b> Tutto il traffico parte dalla postazione di prova. Le protezioni per indirizzo IP (RRL, firewall, anti-DDoS) intervengono molto prima della reale capacità del server: il limite misurato da un solo PC è spesso quello della protezione. Per la capacità reale servono più postazioni o un test concordato con il gestore.</li>
+  <li><b>La misura include la rete.</b> Latenze e perdite comprendono il percorso tra la postazione e il server. Per distinguere problemi del server da problemi di rete, confrontare più name server e, se possibile, più punti di misura.</li>
+  <li><b>Anycast.</b> Se il server è anycast, si misura il nodo raggiunto dalla postazione di prova, non l'intero servizio.</li>
+  <li><b>Capacità del PC di prova.</b> A ritmi molto alti (migliaia di qps) il limite può diventare la CPU o la rete del PC: controllare «Inviate/s» e la «coda» nella barra di stato.</li>
+  <li><b>Risoluzione del nome.</b> Il nome del server è risolto una volta all'avvio: un cambio di indirizzo durante il test non viene seguito.</li>
+  <li><b>Aggiornamenti di Windows.</b> Il programma impedisce la sospensione, ma non i riavvii pianificati: disattivarli per la durata dei test lunghi.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="problemi">15. Risoluzione dei problemi</h2>
+<table>
+  <tr><th>Sintomo</th><th>Causa e rimedio</th></tr>
+  <tr><td class="wrap">Tutte le risposte REFUSED</td><td class="wrap">Resolver interrogato senza RD → attivare «Flag RD». Autoritativo interrogato per zone che non ospita → usare nomi delle sue zone. REFUSED anche con RD attivo → indirizzo sorgente non autorizzato (ACL).</td></tr>
+  <tr><td class="wrap">Tutte le query in TIMEOUT</td><td class="wrap">Porta filtrata da un firewall (locale, aziendale o del server), indirizzo errato, protocollo non offerto (es. DoT non attivo). Provare UDP e TCP sulla 53 per confronto.</td></tr>
+  <tr><td class="wrap">NET_ERROR «ConnectionReset» in UDP</td><td class="wrap">Il server ha risposto «porta non raggiungibile» (ICMP): nessun servizio DNS su quell'indirizzo e porta.</td></tr>
+  <tr><td class="wrap">TLS_ERROR</td><td class="wrap">Certificato non attendibile o con nome diverso: impostare il «Nome TLS (SNI)» corretto. Solo in laboratorio, disattivare la verifica.</td></tr>
+  <tr><td class="wrap">HTTP_ERROR 404/415 in DoH</td><td class="wrap">Percorso dell'URL errato (spesso <code>/dns-query</code>) o metodo non supportato: provare l'altro metodo.</td></tr>
+  <tr><td class="wrap">«QUIC non supportato»</td><td class="wrap">DoQ e HTTP/3 richiedono Windows 11 o Windows Server 2022 o successivi e <code>msquic.dll</code> accanto all'eseguibile.</td></tr>
+  <tr><td class="wrap">Molte «risposte tardive»</td><td class="wrap">Timeout troppo corto rispetto alla latenza reale del server: aumentarlo.</td></tr>
+  <tr><td class="wrap">Coda in crescita nella barra di stato</td><td class="wrap">Il PC non elabora i risultati al ritmo richiesto: ridurre il QPS o il log per query («Solo fallimenti»).</td></tr>
+  <tr><td class="wrap">Errore imprevisto dell'interfaccia</td><td class="wrap">Il test continua e i dati restano salvati. Inviare il file <code>crash.log</code> della cartella dati per la diagnosi.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="tasti">16. Mouse e tastiera</h2>
+<table>
+  <tr><th>Azione</th><th>Effetto</th></tr>
+  <tr><td><kbd>F1</kbd></td><td>Apre questa guida.</td></tr>
+  <tr><td>Rotella sui grafici</td><td>Scorre nel tempo (su = indietro).</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + rotella sui grafici</td><td>Zoom centrato sul puntatore.</td></tr>
+  <tr><td>Trascinamento sui grafici</td><td>Sposta la vista.</td></tr>
+  <tr><td>Doppio clic sui grafici</td><td>Torna al tempo reale.</td></tr>
+  <tr><td><kbd>Invio</kbd> nei campi ora Da/A</td><td>Applica l'intervallo.</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>C</kbd> nelle tabelle</td><td>Copia le righe selezionate con le intestazioni.</td></tr>
+  <tr><td>Freccia dei campi Server / URL / Nome TLS</td><td>Ultimi 30 valori usati.</td></tr>
+  <tr><td><kbd>Invio</kbd> nel campo «Nome contiene» (analisi del log)</td><td>Applica il filtro.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="glossario">17. Glossario</h2>
+<table>
+  <tr><th>Termine</th><th>Definizione</th></tr>
+  <tr><td>AA</td><td class="wrap">Authoritative Answer: la risposta proviene dal server titolare della zona.</td></tr>
+  <tr><td>Anycast</td><td class="wrap">Stesso indirizzo IP annunciato da più nodi: si raggiunge il più vicino in termini di rete.</td></tr>
+  <tr><td>Autoritativo</td><td class="wrap">Server che ospita le zone e ne fornisce i dati originali.</td></tr>
+  <tr><td>EDE</td><td class="wrap">Extended DNS Error (RFC 8914): codice che spiega il motivo di un errore.</td></tr>
+  <tr><td>EDNS0</td><td class="wrap">Estensione del DNS (RFC 6891) per risposte UDP oltre 512 byte, flag aggiuntivi e opzioni.</td></tr>
+  <tr><td>NODATA</td><td class="wrap">NOERROR senza record: il nome esiste ma non ha record del tipo chiesto.</td></tr>
+  <tr><td>Open resolver</td><td class="wrap">Server che risolve nomi di terzi per chiunque: sfruttabile per attacchi di amplificazione.</td></tr>
+  <tr><td>Percentile</td><td class="wrap">p95 = valore sotto il quale cade il 95% delle misure.</td></tr>
+  <tr><td>QPS</td><td class="wrap">Query al secondo.</td></tr>
+  <tr><td>RD / RA</td><td class="wrap">Recursion Desired (chiesta dal client) / Recursion Available (offerta dal server).</td></tr>
+  <tr><td>Resolver ricorsivo</td><td class="wrap">Server che risolve qualsiasi nome interrogando gli autoritativi e conservando le risposte in cache.</td></tr>
+  <tr><td>RRL</td><td class="wrap">Response Rate Limiting: limitazione delle risposte per indirizzo sorgente sugli autoritativi.</td></tr>
+  <tr><td>SNI / ALPN</td><td class="wrap">Estensioni TLS: nome del server richiesto / protocollo applicativo (es. <code>doq</code>).</td></tr>
+  <tr><td>SOA serial</td><td class="wrap">Numero di versione della zona: deve coincidere su tutti i name server.</td></tr>
+  <tr><td>TC</td><td class="wrap">Truncated: risposta troppo grande per UDP; il client dovrebbe ripetere la query in TCP.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="versioni">18. Versioni</h2>
+<table>
+  <tr><th>Versione</th><th>Novità</th></tr>
+  <tr><td>1.2</td><td class="wrap">Interfaccia in italiano e inglese (menu 🌐 Lingua, file <code>lang\en.json</code>), inclusi messaggi, eventi, report HTML e guida. Nuova finestra <b>Analizza log query…</b>: grafico a dispersione delle singole query, filtri per nome, tipo ed esito, aggregati a risoluzione adattiva, tabelle per esito e per nome, elenco delle query, esportazione della selezione. Pubblicazione su GitHub.</td></tr>
+  <tr><td>1.1.0</td><td class="wrap">Cronologia degli ultimi 30 server, URL DoH e nomi TLS. Pulsanti Carica e Salva per l'elenco query. Grafici con storico completo navigabile: barra di scorrimento, rotella, zoom, trascinamento, intervallo Da/A con data e ora, pulsante Tempo reale. Linea dello zero rialzata e area senza dati evidenziata. Apertura nel cruscotto delle sessioni salvate. Guida HTML integrata (<kbd>F1</kbd>).</td></tr>
+  <tr><td>1.0.1</td><td class="wrap">Decodifica degli Extended DNS Error; suggerimenti diagnostici nella finestra di verifica.</td></tr>
+  <tr><td>1.0.0</td><td class="wrap">Prima versione: UDP, TCP, DoT, DoH, DoQ; cruscotto in tempo reale; log per query, aggregati, eventi; report HTML.</td></tr>
+</table>
+
+<footer>DNS Load Tester · DGR – ICT GRC Consulting · Guida v1.2 · <a href="https://github.com/Gate-SPM-Array/DnsLoadTester">github.com/Gate-SPM-Array/DnsLoadTester</a></footer>
+</main>
+</div>
+</body>
+</html>

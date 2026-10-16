@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <AssemblyName>DnsLoadTester</AssemblyName>
+    <RootNamespace>DnsLoadTester.App</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>
+    <TieredPGO>true</TieredPGO>
+    <SatelliteResourceLanguages>it;en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <!-- Pubblicazione portable: un solo eseguibile autonomo, nessun runtime .NET da installare -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <!--
+    msquic.dll (necessaria per DoQ e DoH su HTTP/3) è marcata DropFromSingleFile nel runtime pack:
+    non entra nell'eseguibile singolo, quindi va copiata accanto all'exe.
+  -->
+  <Target Name="CopyMsQuicNextToExe" AfterTargets="Publish" Condition="'$(PublishSingleFile)' == 'true'">
+    <ItemGroup>
+      <_MsQuic Include="@(RuntimePackAsset)" Condition="'%(Filename)%(Extension)' == 'msquic.dll'" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_MsQuic)" DestinationFolder="$(PublishDir)" SkipUnchangedFiles="true" />
+    <Warning Condition="'@(_MsQuic)' == ''" Text="msquic.dll non trovata nel runtime pack: DoQ e HTTP/3 non saranno disponibili." />
+  </Target>
+
+  <ItemGroup>
+    <ProjectReference Include="..\DnsLoadTester.Core\DnsLoadTester.Core.csproj" />
+    <Resource Include="app.ico" />
+    <EmbeddedResource Include="Help\Guida.html" LogicalName="Guida.html" />
+    <EmbeddedResource Include="Help\Guide.html" LogicalName="Guide.html" />
+    <!-- file di lingua esterni, modificabili: copiati in lang\ accanto all'eseguibile (hanno la precedenza sulla copia incorporata) -->
+    <None Include="..\..\lang\*.json" Link="lang\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
+  </ItemGroup>
+
+</Project>

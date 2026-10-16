@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DNS Load Tester Guide</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#1f2937; --muted:#6b7280; --line:#e5e7eb; --soft:#f6f7f9; --accent:#1d4ed8; --accent-soft:#eaf0fe;
+  --ok:#15803d; --ok-soft:#ecfdf3; --warn:#b45309; --warn-soft:#fff8e6; --bad:#b91c1c; --bad-soft:#fef2f2; --code:#f3f4f6;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111418; --fg:#e5e7eb; --muted:#9aa3af; --line:#2a2f37; --soft:#181c22; --accent:#7aa2ff; --accent-soft:#1a2340;
+    --ok:#4ade80; --ok-soft:#10241a; --warn:#fbbf24; --warn-soft:#2a2210; --bad:#f87171; --bad-soft:#2a1416; --code:#1d2229;
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 "Segoe UI",system-ui,-apple-system,sans-serif}
+.layout{display:grid;grid-template-columns:270px minmax(0,1fr);max-width:1260px;margin:0 auto}
+nav{position:sticky;top:0;align-self:start;height:100vh;overflow:auto;padding:22px 14px 30px 20px;border-right:1px solid var(--line);font-size:13.5px}
+nav .brand{font-weight:700;font-size:15px;margin-bottom:2px}
+nav .ver{color:var(--muted);font-size:12px;margin-bottom:14px}
+nav ol{list-style:none;padding:0;margin:0}
+nav li{margin:1px 0}
+nav a{display:block;padding:3px 8px;border-radius:5px;color:var(--fg);text-decoration:none}
+nav a:hover{background:var(--soft);color:var(--accent)}
+nav ol ol{padding-left:12px;font-size:12.8px}
+nav ol ol a{color:var(--muted)}
+main{padding:28px 40px 60px;min-width:0}
+h1{font-size:28px;line-height:1.25;margin:0 0 6px}
+h2{font-size:21px;margin:44px 0 10px;padding-top:6px;border-top:1px solid var(--line)}
+h3{font-size:16.5px;margin:26px 0 6px}
+h4{font-size:14.5px;margin:18px 0 4px}
+p{margin:8px 0}
+.lead{font-size:16.5px;color:var(--muted);max-width:820px}
+a{color:var(--accent)}
+code,kbd{font-family:Consolas,"Cascadia Mono",monospace;font-size:.9em;background:var(--code);padding:1px 5px;border-radius:4px}
+kbd{border:1px solid var(--line);border-bottom-width:2px}
+pre{background:var(--code);padding:10px 14px;border-radius:8px;overflow:auto;font-size:13px;line-height:1.45}
+table{border-collapse:collapse;width:100%;margin:10px 0 14px;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+td:first-child{white-space:nowrap}
+td.wrap{white-space:normal}
+.box{border-radius:8px;padding:10px 14px;margin:12px 0;border-left:4px solid}
+.why{background:var(--accent-soft);border-color:var(--accent)}
+.tip{background:var(--ok-soft);border-color:var(--ok)}
+.warn{background:var(--warn-soft);border-color:var(--warn)}
+.bad{background:var(--bad-soft);border-color:var(--bad)}
+.box > b:first-child{display:block;margin-bottom:2px}
+.el{font-weight:600}
+.tag{display:inline-block;font-size:11.5px;padding:0 6px;border-radius:9px;background:var(--soft);border:1px solid var(--line);color:var(--muted);vertical-align:1px}
+.n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;font-weight:700;margin-right:6px;flex:none}
+/* schema dell'interfaccia */
+.mock{border:1px solid var(--line);border-radius:10px;padding:8px;background:var(--soft);margin:12px 0 6px;font-size:12.5px}
+.mock .z{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px;display:flex;align-items:flex-start;gap:4px;min-height:34px}
+.mock .row{display:grid;gap:6px;margin-bottom:6px}
+.mock .cols{display:grid;grid-template-columns:30% 1fr;gap:6px}
+.mock .stack{display:grid;gap:6px}
+.mock .tall{min-height:120px}
+.legend{columns:2;column-gap:28px;font-size:13.5px;margin:6px 0 4px}
+.legend div{break-inside:avoid;margin:3px 0;display:flex;gap:4px}
+footer{margin-top:50px;color:var(--muted);font-size:13px;border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:900px){table{display:block;overflow-x:auto}td:first-child{white-space:normal}.layout{grid-template-columns:1fr}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 16px 50px}.legend{columns:1}}
+@media print{nav{display:none}.layout{display:block}main{padding:0}h2{break-after:avoid}.box,table,pre{break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Contents">
+  <div class="brand">DNS Load Tester</div>
+  <div class="ver">User and technical guide · v1.2</div>
+  <ol>
+    <li><a href="#intro">1. Purpose and principles</a></li>
+    <li><a href="#avvio">2. Installation and files</a></li>
+    <li><a href="#schema">3. Interface map</a></li>
+    <li><a href="#toolbar">4. Command bar</a></li>
+    <li><a href="#config">5. Configuration panel</a>
+      <ol>
+        <li><a href="#dest">5.1 Target</a></li>
+        <li><a href="#query">5.2 Queries</a></li>
+        <li><a href="#carico">5.3 Load and duration</a></li>
+        <li><a href="#salute">5.4 Server state</a></li>
+        <li><a href="#log">5.5 Logs and export</a></li>
+        <li><a href="#avvisi">5.6 Warnings</a></li>
+      </ol>
+    </li>
+    <li><a href="#cruscotto">6. Dashboard</a>
+      <ol>
+        <li><a href="#kpi">6.1 Indicators (KPIs)</a></li>
+        <li><a href="#vista">6.2 Range and navigation</a></li>
+        <li><a href="#grafici">6.3 Charts</a></li>
+        <li><a href="#schede">6.4 Tabs</a></li>
+        <li><a href="#stato">6.5 Status bar</a></li>
+      </ol>
+    </li>
+    <li><a href="#verifica">7. Check target</a></li>
+    <li><a href="#esiti">8. Outcomes and codes</a></li>
+    <li><a href="#metodo">9. Measurement methodology</a></li>
+    <li><a href="#file">10. Session files</a></li>
+    <li><a href="#report">11. Reports and after-the-fact analysis</a>
+      <ol>
+        <li><a href="#logquery">11.3 Per-query log analysis</a></li>
+      </ol>
+    </li>
+    <li><a href="#scenari">12. Test scenarios</a></li>
+    <li><a href="#lettura">13. How to read the results</a></li>
+    <li><a href="#limiti">14. Limitations and caveats</a></li>
+    <li><a href="#problemi">15. Troubleshooting</a></li>
+    <li><a href="#tasti">16. Mouse and keyboard</a></li>
+    <li><a href="#glossario">17. Glossary</a></li>
+    <li><a href="#versioni">18. Versions</a></li>
+  </ol>
+</nav>
+
+<main>
+<h1>DNS Load Tester – user and technical guide</h1>
+<p class="lead">A utility for measuring over time (minutes, hours or days) the capacity of a DNS server to answer queries, with a real-time dashboard and complete recording to disk. This guide describes every element of the interface and, for each one, the technical rationale: what it measures, why it is designed that way and how to interpret it.</p>
+
+<!-- ============================================================ -->
+<h2 id="intro">1. Purpose and principles</h2>
+<p>The program generates a controlled stream of DNS queries towards a server, measures the outcome and latency of each one, aggregates the results per second and per minute and continuously assesses the state of the server (OK, degraded, unavailable). It is designed primarily for <b>external authoritative servers</b>, but it also works against recursive resolvers.</p>
+<p>Design principles, useful for understanding everything else:</p>
+<ul>
+  <li><b>Fixed-rate load (open loop).</b> Queries are sent according to a predetermined time grid (for example one every 50 ms at 20 qps), regardless of how quickly the server responds. This is the correct way to observe degradation: if the rate depended on the responses, a slow server would receive less load and would look better than it is.</li>
+  <li><b>No data lost.</b> Every completed query is recorded on disk; aggregates and events are written and flushed to disk every second. A crash, a power cut or a forced close does not erase what has already been measured.</li>
+  <li><b>Exact percentiles per interval.</b> Latencies are collected in histograms; the percentiles of a minute or of the whole session are computed over the full set of queries, not as the average of the per-second percentiles (which would be mathematically incorrect).</li>
+  <li><b>Measured from the client's point of view.</b> Latency is the time from sending to receiving the complete response, measured on the test machine: it includes the network path. This is what a real resolver querying the server from that network experiences.</li>
+</ul>
+<div class="box warn"><b>Authorisation</b>Use the program only against your own servers or with the written authorisation of the owner. Even a moderate load, sustained for hours against third-party infrastructure, may be interpreted as an attack and trigger countermeasures or reports.</div>
+
+<!-- ============================================================ -->
+<h2 id="avvio">2. Installation and files</h2>
+<p>The portable version requires neither installation nor the .NET runtime: everything is contained in <code>DnsLoadTester.exe</code>. Copy the folder wherever you prefer (even to a USB stick) and run the executable.</p>
+<table>
+  <tr><th>File / folder</th><th>Purpose</th></tr>
+  <tr><td><code>DnsLoadTester.exe</code></td><td class="wrap">The program (Windows 10/11 x64, Windows Server 2016 or later).</td></tr>
+  <tr><td><code>msquic.dll</code></td><td class="wrap">QUIC library: required for DoQ and for DoH over HTTP/3. It must stay next to the executable. QUIC also requires Windows 11 or Windows Server 2022 or later.</td></tr>
+  <tr><td><code>Sessioni\</code></td><td class="wrap">Default folder for test sessions (one subfolder per session). It can be changed in <a href="#log">Logs and export</a>.</td></tr>
+  <tr><td><code>DnsLoadTester.settings.json</code></td><td class="wrap">The last configuration used, saved automatically every time a test starts and reloaded when the program opens.</td></tr>
+  <tr><td><code>DnsLoadTester.history.json</code></td><td class="wrap">History of the last 30 servers, DoH URLs and TLS names used, and the chosen language.</td></tr>
+  <tr><td><code>lang\en.json</code></td><td class="wrap">English translation of the interface. It is also embedded in the executable; the file in the folder, if present, takes precedence. Anyone can correct it or add a language (see below).</td></tr>
+  <tr><td><code>Guide_DnsLoadTester_v….html</code></td><td class="wrap">This guide (in English; the Italian one is Guida_DnsLoadTester_v….html): it is embedded in the executable and extracted the first time it is opened with <kbd>F1</kbd>.</td></tr>
+  <tr><td><code>crash.log</code></td><td class="wrap">Created only in the event of unexpected interface errors: useful for diagnosis.</td></tr>
+</table>
+<p>If the executable's folder is not writable (for example under <code>C:\Program Files</code>), settings, history and guide go to <code>%LOCALAPPDATA%\DnsLoadTester</code> and sessions to <code>Documents\DnsLoadTester\Sessioni</code>. At startup the status bar shows the data folder actually in use.</p>
+<h3>Interface language</h3>
+<p>The program speaks <b>Italian</b> and <b>English</b>. On first start the language follows that of Windows (Italian if Windows is in Italian, otherwise English); it is changed with the <b>🌐 Language</b> button in the command bar. The choice is saved and applied at restart, which the program offers straight away (during a test it is only stored). The interface, messages, events and HTML report are translated; the headers and values of the CSV files (for example the <code>health</code> column) and the states saved in <code>summary.json</code> stay unchanged, so as not to break anything that processes them.</p>
+<p>The translations are readable JSON files: the Italian text written in the code is the key, the translation is the value (<code>"Avvia test": "Start test"</code>). To correct the English or add a language, all you need is a <code>lang\&lt;code&gt;.json</code> file next to the executable (menu 🌐 → <i>Open the translations folder</i>): missing texts stay in Italian, and a translation that alters the <code>{0}</code> placeholders is ignored. It is the same scheme used by the author's other projects (AdbSync, Pietrasanta Traceroute GUI).</p>
+<div class="box tip"><b>SmartScreen</b>The executable is not digitally signed: on first start Windows may show “Windows protected your PC”. Choose “More info” → “Run anyway”.</div>
+
+<!-- ============================================================ -->
+<h2 id="schema">3. Interface map</h2>
+<p>The window is divided into three parts: command bar at the top, configuration on the left, dashboard on the right. The numbers refer to the sections of the guide.</p>
+<div class="mock" role="img" aria-label="Diagram of the main window">
+  <div class="row"><div class="z"><span class="n">1</span>Command bar: start, stop, check, report, sessions, log analysis, profiles, language, help · test state</div></div>
+  <div class="cols">
+    <div class="stack">
+      <div class="z"><span class="n">2</span>Target</div>
+      <div class="z"><span class="n">3</span>Queries</div>
+      <div class="z"><span class="n">4</span>Load and duration</div>
+      <div class="z"><span class="n">5</span>Server state assessment</div>
+      <div class="z"><span class="n">6</span>Logs and export</div>
+      <div class="z"><span class="n">7</span>Warnings</div>
+    </div>
+    <div class="stack">
+      <div class="z"><span class="n">8</span>Indicators: state · responses/s · success · latencies · totals · errors · time</div>
+      <div class="z"><span class="n">9</span>Range: 5 min … All · From / To · Real time</div>
+      <div class="z tall"><span class="n">10</span>Charts: throughput · latency · failures</div>
+      <div class="z"><span class="n">11</span>History scroll bar</div>
+      <div class="z"><span class="n">12</span>Tabs: events · latest failures · outcomes · per query</div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:6px;margin-bottom:0"><div class="z"><span class="n">13</span>Status bar: messages · log lines · connections · late responses · queue</div></div>
+</div>
+<div class="legend">
+  <div><span class="n">1</span><a href="#toolbar">Command bar</a></div>
+  <div><span class="n">2</span><a href="#dest">Target</a></div>
+  <div><span class="n">3</span><a href="#query">Queries</a></div>
+  <div><span class="n">4</span><a href="#carico">Load and duration</a></div>
+  <div><span class="n">5</span><a href="#salute">Server state assessment</a></div>
+  <div><span class="n">6</span><a href="#log">Logs and export</a></div>
+  <div><span class="n">7</span><a href="#avvisi">Warnings</a></div>
+  <div><span class="n">8</span><a href="#kpi">Indicators</a></div>
+  <div><span class="n">9</span><a href="#vista">Range and navigation</a></div>
+  <div><span class="n">10</span><a href="#grafici">Charts</a></div>
+  <div><span class="n">11</span><a href="#vista">History scrolling</a></div>
+  <div><span class="n">12</span><a href="#schede">Tabs</a></div>
+  <div><span class="n">13</span><a href="#stato">Status bar</a></div>
+</div>
+<p>The vertical splitter between configuration and dashboard and the horizontal one above the tabs can be dragged to resize the areas. During a test the configuration panel is locked: the configuration of a session cannot change while it is running.</p>
+
+<!-- ============================================================ -->
+<h2 id="toolbar">4. Command bar</h2>
+<table>
+  <tr><th>Element</th><th>Purpose and technical notes</th></tr>
+  <tr><td class="el">▶ Start test</td><td class="wrap">Checks the configuration (errors prevent the start), shows a summary with target, load, duration and any warnings, and asks for confirmation. It then resolves the server name (once only), creates the session folder and starts the workers. The address actually used is recorded in <code>session.json</code> and in the report.</td></tr>
+  <tr><td class="el">■ Stop</td><td class="wrap">Orderly stop: no new queries are sent, the ones in flight are awaited (at most the timeout), the intervals are closed, and the final summary and the report are written. The same happens if the window is closed during a test (confirmation is requested).</td></tr>
+  <tr><td class="el">Check target</td><td class="wrap">Sends each query in the list once (maximum 20), in sequence, with all the current settings, and shows the result in a dedicated window. It creates neither sessions nor files. See <a href="#verifica">chapter 7</a>. Always use it before a long test.</td></tr>
+  <tr><td class="el">Session folder</td><td class="wrap">Opens in File Explorer the folder of the current session, of the last one run, or of the one opened with “Open session”.</td></tr>
+  <tr><td class="el">Open report</td><td class="wrap">Opens in the browser the HTML report of the last completed session (or of the opened session).</td></tr>
+  <tr><td class="el">Partial report</td><td class="wrap">Only during a test: forces the summary to be written and generates a report with the data collected up to that moment, without interrupting the measurement. Useful for an interim update to a customer during a test lasting several days.</td></tr>
+  <tr><td class="el">Report from session…</td><td class="wrap">Regenerates the report of any session folder, even one interrupted by a crash. The report is rebuilt from the files on disk alone; each regeneration creates a new numbered file (<code>report_v1.1.html</code>, <code>v1.2</code>, …) without overwriting the previous ones.</td></tr>
+  <tr><td class="el">Open session…</td><td class="wrap">Loads a saved session into the dashboard for analysis: complete navigable charts, indicators referring to the whole session, events, outcomes and results per query. It is a read-only view. See <a href="#report">chapter 11</a>.</td></tr>
+  <tr><td class="el">Analyse query log…</td><td class="wrap">Opens the graphical analysis window for the <code>queries_NNNN.csv</code> files: every single query on a time × latency chart, filters by name, type and outcome, aggregate charts, tables and export. It preloads the current session or the last one opened, if it has a per-query log. See <a href="#logquery">§11.3</a>.</td></tr>
+  <tr><td class="el">Load profile…</td><td class="wrap">Loads a saved configuration (JSON). It also accepts the <code>session.json</code> of a previous session: this is the quickest way to repeat a test exactly.</td></tr>
+  <tr><td class="el">Save profile…</td><td class="wrap">Saves the current configuration to a JSON file (proposed name with a version number).</td></tr>
+  <tr><td class="el">🌐 Language</td><td class="wrap">List of the available languages (Italian, English and any files added in <code>lang\</code>) and a command to open the translations folder. The chosen language is applied at restart.</td></tr>
+  <tr><td class="el">? Help (F1)</td><td class="wrap">Opens this guide in the default browser, in the interface language.</td></tr>
+  <tr><td class="el">State (right)</td><td class="wrap">Ready · Starting… · <span style="color:var(--ok)">● TEST RUNNING</span> · Stopping… · Test finished · Finished with errors · Saved session (analysis).</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="config">5. Configuration panel</h2>
+<p>All values are saved automatically when each test starts and presented again the next time the program opens. Numeric fields accept whole numbers only, except the percentage thresholds (which also accept decimals).</p>
+
+<h3 id="dest">5.1 Target</h3>
+<table>
+  <tr><th>Element</th><th>Purpose and technical rationale</th></tr>
+  <tr><td class="el">Protocol</td><td class="wrap">
+    <b>UDP</b> (RFC 1035): the normal DNS transport, one query per datagram; it is what the vast majority of resolvers use towards authoritative servers.<br>
+    <b>TCP</b> (RFC 7766): mandatory for large responses (truncated over UDP) and for zone transfers; an authoritative server must also answer over TCP.<br>
+    <b>DoT</b> – DNS over TLS (RFC 7858), port 853: DNS over an encrypted TCP connection.<br>
+    <b>DoH</b> – DNS over HTTPS (RFC 8484): DNS inside HTTPS requests; used by browsers and operating systems.<br>
+    <b>DoQ</b> – DNS over QUIC (RFC 9250), port 853 UDP: encrypted like DoT, but without TCP's head-of-line blocking.<br>
+    When the protocol is changed, the port switches to the standard value (53, 853 or 443) if it was set to one of these.</td></tr>
+  <tr><td class="el">Server</td><td class="wrap">IPv4 or IPv6 address or name of the server. The field is an editable box with <b>history</b>: the arrow shows the last 30 values used, and typing gives auto-completion. A value enters the history only when it is actually used (start of a test or successful check).<br>
+    If a name is given, it is resolved <b>once only</b> at startup with the system resolver, and that address is used for the whole session: the measurement thus always concerns the same node, even if the name has several.</td></tr>
+  <tr><td class="el">⋯ (history)</td><td class="wrap">Menu to remove the current entry from the history, clear the history of that field, or clear the whole history (servers, URLs, TLS names).</td></tr>
+  <tr><td class="el">Port</td><td class="wrap">Port of the service: 53 for UDP/TCP, 853 for DoT/DoQ.</td></tr>
+  <tr><td class="el">IP family</td><td class="wrap">Used only if the server is given by name. <b>Automatic IP</b> prefers IPv4 if available; <b>IPv4 only</b> / <b>IPv6 only</b> force the family. Useful for comparing the two ways of reaching the same server, which often have different network paths.</td></tr>
+  <tr><td class="el">DoH URL</td><td class="wrap">DoH only: full URL of the service (e.g. <code>https://dns.example.com/dns-query</code>), with history like the Server field. The name in the URL is resolved by the system at every new HTTP connection. The system proxy is ignored: the measurement must concern the server, not an intermediate proxy.</td></tr>
+  <tr><td class="el">POST / GET method</td><td class="wrap"><b>POST</b> sends the DNS message in the body (<code>application/dns-message</code>); <b>GET</b> encodes it in base64url in the <code>?dns=</code> parameter. GET can be stored in HTTP caches: for this reason RFC 8484 recommends ID = 0, and the program always uses ID 0 in DoH.</td></tr>
+  <tr><td class="el">HTTP version</td><td class="wrap"><b>HTTP/1.1</b>: one request at a time per connection. <b>HTTP/2</b>: several simultaneous requests on the same connection (multiplexing); this is the most common case. <b>HTTP/3</b>: HTTP over QUIC (requires Windows 11 / Server 2022). The version is <i>exact</i>: if the server does not support it, the query fails instead of falling back to another version, so the test measures what was requested.</td></tr>
+  <tr><td class="el">TLS name (SNI)</td><td class="wrap">DoT and DoQ only: the name the server certificate must contain, sent in the SNI extension. Empty = same as the Server field. Essential when the server is given by IP but the certificate carries a name. It has a history.</td></tr>
+  <tr><td class="el">Do not verify the server certificate</td><td class="wrap">Turns off certificate checking (chain, expiry, name). It is only for the lab or with internal certificates: in a real test an invalid certificate is a problem to report, not to work around.</td></tr>
+  <tr><td class="el">Reuse connections</td><td class="wrap">Not present for UDP. On (default): each worker keeps its own TCP/TLS/QUIC/HTTP connection and reuses it, as a real resolver does. Off: a new connection for every query, so the latency includes the handshake (TCP and TLS) every time. Comparing the two cases measures the cost of the handshake and the server's ability to accept new connections.<br>
+    If the server closes an idle connection, the program reopens it transparently with a single new attempt, without counting it as an error.</td></tr>
+</table>
+
+<h3 id="query">5.2 Queries</h3>
+<table>
+  <tr><th>Element</th><th>Purpose and technical rationale</th></tr>
+  <tr><td class="el">Query list</td><td class="wrap">One query per line, in the form <code>name TYPE</code> (e.g. <code>example.com SOA</code>). Also accepted are <code>TYPE name</code>, the CSV format <code>name,TYPE</code> and <code>name</code> alone (the default type is used). Empty lines and lines starting with <code>#</code> or <code>;</code> are ignored. Internationalised names (with accents) are automatically converted to punycode. Invalid lines are discarded with a warning, visible in the events.</td></tr>
+  <tr><td class="el"><code>{rnd}</code></td><td class="wrap">Placeholder replaced at every query by 10 random characters <code>[a-z0-9]</code>, for example <code>{rnd}.example.com</code> → <code>k8dm1c75ls.example.com</code>. Every name is different, so no intermediate cache can answer: on an authoritative server it tests the generation of NXDOMAIN responses; on a recursive resolver it forces the authoritative servers to be queried at every query. It is also the technique used in “random subdomain” (water torture) attacks: use it sparingly and only with authorisation.</td></tr>
+  <tr><td class="el">Load…</td><td class="wrap">Loads the list from a <code>.txt</code> or <code>.csv</code> file (replaces the content). Above 200,000 lines confirmation is requested.</td></tr>
+  <tr><td class="el">Save…</td><td class="wrap">Saves the current list to a UTF-8 text file. If the list comes from a loaded file, it proposes the same name with an incremented version (<code>_v1.0</code> → <code>_v1.1</code>); otherwise it proposes <code>query_&lt;label or server&gt;_v1.0.txt</code>.</td></tr>
+  <tr><td class="el">Default type</td><td class="wrap">Record type for lines without a type. It can be chosen from the list or any known type can be typed, or <code>TYPEnnn</code> / a number for types not in the list (RFC 3597).</td></tr>
+  <tr><td class="el">Query order</td><td class="wrap"><b>Sequential</b>: queries follow one another cyclically in the order of the list, a perfectly uniform distribution. <b>Random</b>: each query is drawn at random; it better simulates real traffic and avoids repetitive patterns that some rate-limiting mechanisms recognise.</td></tr>
+  <tr><td class="el">RD flag</td><td class="wrap">Recursion Desired. <b>Off</b> (default): like a resolver querying an authoritative server; it is the correct setting for testing an authoritative server. <b>On</b>: requests recursive resolution, essential for testing a resolver. Many resolvers answer REFUSED to queries without RD (protection against “cache snooping”). A well-configured authoritative server, on the other hand, answers only for its own zones even with RD on: if it resolved third-party names it would be an <i>open resolver</i>, exploitable for amplification attacks.</td></tr>
+  <tr><td class="el">EDNS0 + buffer</td><td class="wrap">Adds the OPT record (RFC 6891) and advertises the maximum UDP response size accepted. The recommended value is <b>1232</b> bytes (DNS Flag Day 2020): it avoids IP fragmentation, a frequent cause of lost responses. Without EDNS, UDP responses are limited to 512 bytes and larger ones arrive truncated (TC flag). With EDNS the program also interprets the extended RCODE and Extended DNS Errors.</td></tr>
+  <tr><td class="el">DNSSEC (DO)</td><td class="wrap">Sets the DNSSEC OK bit: the server includes the signatures (RRSIG) in the responses for signed zones. The responses become much larger: it is a good load test for bandwidth and fragmentation, and it checks that the server serves DNSSEC records correctly.</td></tr>
+</table>
+
+<h3 id="carico">5.3 Load and duration</h3>
+<table>
+  <tr><th>Element</th><th>Purpose and technical rationale</th></tr>
+  <tr><td class="el">Target QPS</td><td class="wrap">Total queries per second to send. Queries are distributed evenly over an absolute time grid (query <i>n</i> at instant <i>n</i>/QPS), not in bursts. <b>0</b> = no limit: each worker sends the next query as soon as it receives the response (maximum throughput test, to be used with extreme caution against external servers).</td></tr>
+  <tr><td class="el">Workers</td><td class="wrap">Number of queries “in flight” at the same time (from 1 to 5000). Each worker has a single channel (socket or connection) and a single query at a time. By Little's law at least <code>QPS × mean latency</code> workers are needed to sustain the rate under normal conditions, but to maintain it even when the server does not respond (every query waits for the timeout) <code>QPS × timeout</code> are needed. Example: 200 qps with a 2 s timeout → 400 workers. With fewer workers, during an outage the load sent drops by itself (visible in the “Sent/s” line): the Warnings box flags this.</td></tr>
+  <tr><td class="el">Timeout (ms)</td><td class="wrap">Maximum wait for a response (from 50 to 60,000 ms), beyond which the query is counted as TIMEOUT. Real resolvers typically wait between 400 ms and 2 s before retrying or moving to another name server: a value in this range makes the test realistic. A query that times out is counted in the second in which the timeout expires.</td></tr>
+  <tr><td class="el">Ramp-up (s)</td><td class="wrap">Duration of the gradual increase: the rate grows linearly from zero to the target QPS. It avoids hitting the server with the full load from cold (caches, connections, any anti-DDoS systems) and makes it possible to observe at which level problems begin.</td></tr>
+  <tr><td class="el">Duration</td><td class="wrap">Days, hours and minutes. When it expires the test stops in an orderly way and generates the report.</td></tr>
+  <tr><td class="el">No time limit</td><td class="wrap">The test continues until Stop is pressed or the program is closed.</td></tr>
+</table>
+<div class="box why"><b>Why a fixed time grid</b>If the program falls behind (slow server or insufficient workers), the queries not sent on time are <i>not</i> made up with a burst: beyond 1 second of delay the grid is realigned. A catch-up burst would distort the measurement at the worst possible moment. Instead, the delay becomes visible: the “Sent/s” line drops below the target. This is the behaviour that avoids the methodological error known as <i>coordinated omission</i>.</div>
+
+<h3 id="salute">5.4 Server state assessment</h3>
+<p>Every second the program assesses the queries completed within a sliding window and assigns a state. The same criteria feed the “Server state” indicator, the coloured strip in the report, the <code>health</code> column of the aggregates and the events.</p>
+<table>
+  <tr><th>Element</th><th>Purpose</th></tr>
+  <tr><td class="el">Observation window (s)</td><td class="wrap">Number of seconds considered (from 1 to 300, default 10). Short windows react immediately but are “jumpy”; long windows are stable but report later.</td></tr>
+  <tr><td class="el">Degraded if success below (%)</td><td class="wrap">Default 99%: more than 1 query in 100 without a valid response in the window brings the state to DEGRADED.</td></tr>
+  <tr><td class="el">… or p95 latency above (ms)</td><td class="wrap">Default 500 ms: even with all responses received, if the slowest 5% exceed the threshold the state is DEGRADED. Slow responses are almost equivalent to lost responses, because resolvers time out and retry.</td></tr>
+  <tr><td class="el">Unavailable if success below (%)</td><td class="wrap">Default 50%. The state is UNAVAILABLE also when queries were sent in the window and none was completed. It must be lower than the degraded threshold.</td></tr>
+  <tr><td class="el">NXDOMAIN valid</td><td class="wrap">If on (default), NXDOMAIN is a correct response: the server answered that the name does not exist, and it is the expected response for <code>{rnd}</code> queries. Turn it off only if all the names in the list must exist.</td></tr>
+</table>
+<div class="box why"><b>Hysteresis</b>A deterioration is reported immediately; an improvement only after the new state has remained stable for as many seconds as the window. This way a single good second during an outage does not produce a burst of alternating OK/UNAVAILABLE events. An <b>episode</b> is counted every time the state goes from OK (or no data) to DEGRADED or UNAVAILABLE.</div>
+<p>“Success” means a NOERROR response (including responses without records, known as NODATA), plus NXDOMAIN if the option is on. SERVFAIL, REFUSED, the other RCODEs, timeouts and transport errors are failures.</p>
+
+<h3 id="log">5.5 Logs and export</h3>
+<table>
+  <tr><th>Element</th><th>Purpose and technical rationale</th></tr>
+  <tr><td class="el">Folder</td><td class="wrap">Folder in which a subfolder is created for each session, named <code>YYYYMMDD_hhmmss_PROTOCOL_server[_label]</code>. The “…” button opens the folder picker.</td></tr>
+  <tr><td class="el">Session label</td><td class="wrap">Optional text added to the folder name (customer, ticket, scenario). It makes it easier to sort many sessions.</td></tr>
+  <tr><td class="el">Per-query log</td><td class="wrap"><b>All queries</b>: one line for every query (maximum forensic detail). <b>Failures only</b>: records only timeouts, errors and invalid responses; suitable for multi-day tests at a high rate. <b>Off</b>: aggregates and events only. In all cases the per-second and per-minute aggregates remain complete.</td></tr>
+  <tr><td class="el">File rotation (MB)</td><td class="wrap">Size beyond which the per-query log moves on to a new file (<code>queries_0001.csv</code>, <code>queries_0002.csv</code>, …). Files of a few hundred MB remain manageable with Excel, editors and analysis tools.</td></tr>
+  <tr><td class="el">CSV format</td><td class="wrap"><b>Excel Italian</b>: <code>;</code> separator and decimal comma; opens with a double-click in Excel configured in Italian. <b>Standard</b>: <code>,</code> separator and decimal point (RFC 4180), for Python, Power BI, SIEM. The format applies to all the CSV files of the session and is recorded in <code>session.json</code>, so the report reads them back correctly.</td></tr>
+</table>
+<p>The per-query log takes about 110 bytes per query: for example 100 qps for 7 days ≈ 6.7 GB.</p>
+
+<h3 id="avvisi">5.6 Warnings</h3>
+<p>The yellow box at the bottom of the configuration updates as values are changed and flags situations that are not blocking but are important:</p>
+<ul>
+  <li><b>Insufficient workers</b>: with the number of workers given, if the server stops responding the load would drop to about <code>workers ÷ timeout</code> qps. The minimum number needed to maintain the target is shown.</li>
+  <li><b>Unlimited QPS</b>: a reminder about responsible use.</li>
+  <li><b>Disk space</b>: estimate of the per-query log when above 2 GB.</li>
+  <li><b>Certificate not verified</b>.</li>
+</ul>
+<p>The same warnings appear in the start confirmation window.</p>
+
+<!-- ============================================================ -->
+<h2 id="cruscotto">6. Dashboard</h2>
+
+<h3 id="kpi">6.1 Indicators (KPIs)</h3>
+<p>Updated once a second, at the close of each measurement second.</p>
+<table>
+  <tr><th>Indicator</th><th>Main value</th><th>Secondary line</th></tr>
+  <tr><td class="el">Server state</td><td class="wrap">OK (green), DEGRADED (yellow), UNAVAILABLE (red), NO DATA (grey), according to the criteria in <a href="#salute">§5.4</a>.</td><td class="wrap">How long the current state has lasted · number of degradation episodes since the start.</td></tr>
+  <tr><td class="el">Responses/s</td><td class="wrap">DNS responses (any RCODE) received in the last closed second.</td><td class="wrap">Queries sent in the same second · target QPS · peak responses/s of the session.</td></tr>
+  <tr><td class="el">Success (last N s)</td><td class="wrap">Percentage of successes in the observation window.</td><td class="wrap">Cumulative success percentage for the whole session.</td></tr>
+  <tr><td class="el">Latency p50 / p95 / p99</td><td class="wrap">Latency percentiles in the window (ms). p50 = median; p95 = 95 responses in 100 are faster; p99 = slow tail.</td><td class="wrap">Cumulative p95 and p99 for the session.</td></tr>
+  <tr><td class="el">Queries completed</td><td class="wrap">Queries concluded in any way (response, timeout, error).</td><td class="wrap">Queries sent · percentage of responses with the AA flag (authoritative).</td></tr>
+  <tr><td class="el">Timeouts / errors</td><td class="wrap">Total timeouts / total transport and protocol errors.</td><td class="wrap">SERVFAIL and REFUSED responses (they are responses, but they count as failures).</td></tr>
+  <tr><td class="el">Elapsed time</td><td class="wrap">Duration of the test.</td><td class="wrap">Remaining time, or “until stopped manually”.</td></tr>
+</table>
+<p>When a saved session is being analysed (<a href="#report">Open session</a>), the indicators refer to the whole session: the state shows the final outcome, the secondary line the overall availability, and “Responses/s” the average.</p>
+<div class="box why"><b>Why the AA percentage</b>The AA (Authoritative Answer) flag says that the response comes from the server that owns the zone and not from a cache. When testing an authoritative server it should be close to 100%: a low value indicates that names of zones the server does not host are being queried, or that a resolver is being queried.</div>
+
+<h3 id="vista">6.2 Range and history navigation</h3>
+<p>The charts keep <b>the whole session</b> in memory, both per second and per minute (about 32 bytes per second: a week of testing takes around twenty MB). Nothing drops out of the view: you can always go back.</p>
+<table>
+  <tr><th>Element</th><th>Purpose</th></tr>
+  <tr><td class="el">5 min · 30 min · 2 h · 24 h</td><td class="wrap">Width of the visible window. In real time the window follows the latest data; in history mode the end instant stays fixed and the width changes.</td></tr>
+  <tr><td class="el">All</td><td class="wrap">Shows the whole session from the start until now.</td></tr>
+  <tr><td class="el">From / To</td><td class="wrap">Start and end date (calendar picker) and time (<code>hh:mm:ss</code> or <code>hh:mm</code>). <b>Apply</b> (or <kbd>Enter</kbd> in a time field) shows exactly that range and switches to history mode. When they are not being edited, the fields show the currently visible range: they can also be used simply to read the displayed range precisely.</td></tr>
+  <tr><td class="el">● Real time / ⏸ History</td><td class="wrap">Green “Real time”: the view moves forward by itself with new data. As soon as you scroll back, zoom or apply a From/To range, the view stops (history mode) and the button becomes “History – back to real time”: one click returns to the latest instant.</td></tr>
+  <tr><td class="el">Resolution</td><td class="wrap">When the visible portion of data is at most 2 hours, per-second data is used (even with the “24 h” view at the start of a test); beyond that, per-minute data. Per minute, p95 and p99 are the percentiles of all the queries in that minute (not averages), so they faithfully represent the minute. The current minute appears when it closes.</td></tr>
+  <tr><td class="el">Scroll bar</td><td class="wrap">Below the charts: it represents the whole session, and the thumb is as large as the visible window. Dragging it, clicking on the bar or on the arrows scrolls through the history; moving it to the far right turns real time back on. To the right of the bar the visible range and its duration are shown.</td></tr>
+  <tr><td class="el">Mouse on the charts</td><td class="wrap"><b>Wheel</b>: scrolls through time (up = back). <b>Ctrl + wheel</b>: zoom centred on the pointer. <b>Dragging</b> with the left button: moves the view. <b>Double-click</b>: returns to real time. <b>Hover</b>: vertical line and a box with the values of each series at that point. The three charts are always synchronised.</td></tr>
+</table>
+<p>The view remains navigable even after the test has finished: it is the quickest way to inspect a degradation episode without opening the CSV files.</p>
+
+<h3 id="grafici">6.3 Charts</h3>
+<table>
+  <tr><th>Chart</th><th>Series</th><th>Reading</th></tr>
+  <tr><td class="el">Throughput</td><td class="wrap"><span style="color:#94a3b8">- - Sent/s</span> · <span style="color:#2563eb">Responses/s</span> · <span style="color:#16a34a">Successes/s</span></td><td class="wrap">Under normal conditions the three lines coincide with the target QPS. <b>Responses below Sent</b> = the server is losing queries. <b>Successes below Responses</b> = the server responds but with errors (SERVFAIL, REFUSED). <b>Sent below the target</b> = the client cannot sustain the rate (workers insufficient for the latency or timeout).</td></tr>
+  <tr><td class="el">Latency</td><td class="wrap"><span style="color:#16a34a">p50</span> · <span style="color:#f59e0b">p95</span> · <span style="color:#dc2626">p99</span></td><td class="wrap">p50 is the “typical” latency, dominated by the network; p95 and p99 show the slow tail, the first symptom of server saturation. Timeouts are not included in the latencies: they appear in the failures chart.</td></tr>
+  <tr><td class="el">Failures</td><td class="wrap"><span style="color:#dc2626">% failed</span> · <span style="color:#7c3aed">% timeouts</span></td><td class="wrap">Percentage of the queries completed in the interval. If the two lines coincide, the failures are all timeouts; if “% failed” is above “% timeouts”, there are also error responses or transport errors (details in the tabs). Axis capped at 100%.</td></tr>
+</table>
+<ul>
+  <li><b>Raised zero line</b>: zero is drawn a few pixels above the bottom edge with a bolder line, so a series at zero (for example “% timeouts” always nil) stays visible and is not confused with the frame.</li>
+  <li><b>Min-max envelope</b>: when a pixel contains several points (long windows), the segment from the minimum to the maximum is drawn. Short peaks never disappear because of the scale.</li>
+  <li><b>Grey area</b>: beyond the end of the available data (at the start of a test, or once the session has finished).</li>
+  <li><b>Breaks in the line</b>: seconds without any response (no latency value) or missing data.</li>
+  <li>The vertical axis adapts to the visible values.</li>
+</ul>
+
+<h3 id="schede">6.4 Tabs</h3>
+<table>
+  <tr><th>Tab</th><th>Content</th></tr>
+  <tr><td class="el">Events</td><td class="wrap">Start and end of the session, every change of server state with the duration of the previous state and the reason (success, timeouts and p95 of the window), warnings about the queries, time jumps (PC asleep), internal errors. Yellow rows = WARN, red = ERROR. The last 5000 events remain on screen; the complete list is in <code>events.csv</code>.</td></tr>
+  <tr><td class="el">Latest failures</td><td class="wrap">The last 200 failed queries: time to the millisecond, actual name (including the one generated by <code>{rnd}</code>), type, outcome, latency, detail (error message or Extended DNS Error). Not available for reopened sessions: in that case the <code>queries_*.csv</code> files are used.</td></tr>
+  <tr><td class="el">Outcomes</td><td class="wrap">Count and percentage of each outcome (RCODE and error types) over the whole session.</td></tr>
+  <tr><td class="el">Per query</td><td class="wrap">One row for each entry in the list: queries completed, success, timeouts, errors, mean latency, percentage of authoritative responses. It brings out problematic names (for example a badly delegated zone or a record that produces SERVFAIL).</td></tr>
+</table>
+<p>Table rows can be selected and copied with <kbd>Ctrl</kbd>+<kbd>C</kbd> (headers included) to paste them into Excel. While rows are being selected, the table does not update, so as not to lose the selection.</p>
+
+<h3 id="stato">6.5 Status bar</h3>
+<table>
+  <tr><th>Element</th><th>Meaning</th></tr>
+  <tr><td class="el">Message (left)</td><td class="wrap">Folder of the running session, outcome of file operations, data folder at startup.</td></tr>
+  <tr><td class="el">Query log</td><td class="wrap">Lines written to the per-query log and number of files (rotation).</td></tr>
+  <tr><td class="el">Connections</td><td class="wrap">TCP/TLS/QUIC connections opened since the start (not counted for DoH, which is handled by the HTTP client). With reuse on it should stay close to the number of workers: if it grows continuously, the server is closing the connections (idle limits or limits on queries per connection).</td></tr>
+  <tr><td class="el">Late responses</td><td class="wrap">UDP responses that arrived after their query's timeout (recognised by an ID different from the expected one and discarded), or responses with a wrong ID over TCP. Many late responses indicate a timeout that is too short compared with the server's real latency.</td></tr>
+  <tr><td class="el">Queue</td><td class="wrap">Results waiting for statistical processing. Normally close to zero; if it grows steadily, the test PC cannot process the results at the required rate and the load must be reduced.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="verifica">7. Check target</h2>
+<p>Sends each query in the list (maximum 20) once only, with a single worker and with all the current settings (protocol, RD, EDNS, DO, timeout, TLS). It is used to check, before a long test, that the server responds as expected.</p>
+<table>
+  <tr><th>Element</th><th>Meaning</th></tr>
+  <tr><td class="el">Header</td><td class="wrap">Target as entered → address actually contacted.</td></tr>
+  <tr><td class="el">Summary</td><td class="wrap">Valid responses out of the total and how many have the AA flag. In green if all are valid, in orange otherwise.</td></tr>
+  <tr><td class="el">Suggestion ➜</td><td class="wrap">Automatic diagnosis of the most common cases: REFUSED with RD off (a resolver is being queried), REFUSED even with RD on (address not authorised or zones not hosted), responses without AA (server not authoritative for those names).</td></tr>
+  <tr><td class="el">Columns</td><td class="wrap">Actual <b>Name</b> · <b>Type</b> · <b>Outcome</b> · <b>Latency ms</b> · <b>AA</b> · <b>Answers</b> (records in the answer section) · <b>Bytes</b> (size of the response) · <b>Detail</b> (error or Extended DNS Error).</td></tr>
+</table>
+<div class="box tip"><b>Response size over DoT/DoH</b>On encrypted channels many servers pad responses up to 468 bytes (EDNS padding, RFC 8467) so as not to reveal, through the size, which name was requested. This is not an error.</div>
+
+<!-- ============================================================ -->
+<h2 id="esiti">8. Outcomes and codes</h2>
+<h3>DNS responses (RCODE)</h3>
+<table>
+  <tr><th>Outcome</th><th>Meaning</th><th>Success?</th></tr>
+  <tr><td>NOERROR</td><td class="wrap">Correct response (even without records: NODATA).</td><td>Yes</td></tr>
+  <tr><td>NXDOMAIN</td><td class="wrap">The name does not exist. Correct response for <code>{rnd}</code> names.</td><td>Configurable</td></tr>
+  <tr><td>SERVFAIL</td><td class="wrap">The server cannot answer: zone not loaded, DNSSEC problem, failed backend; on a resolver, authoritative servers unreachable.</td><td>No</td></tr>
+  <tr><td>REFUSED</td><td class="wrap">The server refuses the query: zone not hosted, policy, ACL on the source address, recursion not allowed.</td><td>No</td></tr>
+  <tr><td>FORMERR / NOTIMP</td><td class="wrap">Query not understood or function not supported (for example some types or EDNS).</td><td>No</td></tr>
+  <tr><td>Others (RCODEn)</td><td class="wrap">Less common codes, including extended EDNS RCODEs (e.g. BADVERS).</td><td>No</td></tr>
+</table>
+<h3>Outcomes without a response</h3>
+<table>
+  <tr><th>Outcome</th><th>Meaning</th></tr>
+  <tr><td>TIMEOUT</td><td class="wrap">No response within the timeout. Over UDP a response that arrives later is counted among the “late responses”.</td></tr>
+  <tr><td>NET_ERROR</td><td class="wrap">Network error: connection refused, host unreachable, “ICMP port unreachable (ConnectionReset)” over UDP (no service on the port), QUIC error.</td></tr>
+  <tr><td>TLS_ERROR</td><td class="wrap">TLS handshake failed: certificate not trusted, expired or with a different name; protocol not accepted.</td></tr>
+  <tr><td>HTTP_ERROR</td><td class="wrap">DoH: HTTP response other than 200 (e.g. 400, 404, 415, 503).</td></tr>
+  <tr><td>PROTOCOL_ERROR</td><td class="wrap">Invalid or unrelated response: malformed, without the response bit, ID or question different from the query sent, connection closed without a response.</td></tr>
+</table>
+<h3>Extended DNS Error (RFC 8914)</h3>
+<p>Many servers attach to their responses a code explaining the reason for the refusal or the error. The program decodes it and shows it in the Detail column, for example <code>EDE 18 Prohibited</code> (refusal by policy), <code>EDE 20 Not Authoritative</code>, <code>EDE 6 DNSSEC Bogus</code>, <code>EDE 22 No Reachable Authority</code>, <code>EDE 15 Blocked</code>, <code>EDE 3 Stale Answer</code>. The detail also appears in the main errors table of the report.</p>
+
+<!-- ============================================================ -->
+<h2 id="metodo">9. Measurement methodology</h2>
+<h3>Load generation</h3>
+<ul>
+  <li><b>Workers</b>: each has its own channel (“connected” UDP socket, TCP/TLS connection, QUIC connection or shared HTTP client for DoH) and one query at a time. This isolates the workers from one another and makes the concurrency exactly what was configured.</li>
+  <li><b>Scheduler</b>: send instant of query <i>n</i> = <i>n</i> / QPS from the start (with the ramp-up, a curve that makes the rate grow linearly). If sending is more than 1 s late, the grid is realigned instead of catching up with a burst.</li>
+  <li><b>During the test</b> Windows does not go into automatic sleep, and the system timer resolution is set to 1 ms, for a regular cadence even at a few qps.</li>
+</ul>
+<h3>Query construction and validation</h3>
+<ul>
+  <li>Random ID for each query over UDP, TCP and DoT; ID 0 in DoH and DoQ, as required by RFCs 8484 and 9250.</li>
+  <li>Class IN; RD flag according to the configuration (CD always 0); OPT record if EDNS is on (buffer and DO bit configurable).</li>
+  <li>A response is accepted only if it has the QR bit, the same ID and the same question section as the query (case-insensitive comparison). This is the same check a resolver performs to defend itself against spoofed responses: it guarantees that every response counted really is the one for the query being measured.</li>
+  <li>Over UDP, responses with a different ID are discarded and the program keeps waiting for the right one until the timeout (late responses).</li>
+  <li>Over TCP/DoT, after a timeout the connection is closed and reopened (the state of the stream is no longer reliable).</li>
+  <li>In DoQ each query uses a new bidirectional stream on the worker's QUIC connection (ALPN <code>doq</code>, maximum idle time 30 s).</li>
+</ul>
+<h3>Latency measurement</h3>
+<ul>
+  <li>High-resolution stopwatch started immediately before sending and stopped on complete receipt of the response.</li>
+  <li>If a connection has to be opened for that query (a worker's first send, connection closed by the server, reuse off), the latency includes the TCP/TLS/QUIC handshake, as happens to a real client.</li>
+  <li>Latencies are collected in a log-linear histogram: 1 µs resolution up to 64 µs, then 32 buckets for each doubling, with a maximum relative error of around 3% over the whole scale up to tens of seconds. The percentiles for the second, minute, window and session are computed from the histogram of the corresponding set.</li>
+</ul>
+<h3>Aggregation</h3>
+<ul>
+  <li>Each result is attributed to the second in which the query concludes. Each closed second produces a line in <code>intervals_1s.csv</code>; every 60 seconds a line in <code>intervals_1m.csv</code>.</li>
+  <li>Statistics are processed by a single dedicated thread, separate from the workers: the send path has no locks and the measurement is not disturbed by the processing.</li>
+  <li>If the PC remains frozen or asleep for more than an hour, the missing interval is not filled with empty seconds: a “time jump” event is recorded.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="file">10. Session files</h2>
+<p>Each session is a self-contained folder: it contains everything needed to analyse it, regenerate the report or reopen it in the dashboard, even on another PC.</p>
+<table>
+  <tr><th>File</th><th>Content</th><th>Writing</th></tr>
+  <tr><td><code>session.json</code></td><td class="wrap">Complete configuration, program version, PC and operating system, resolved address, CSV format.</td><td class="wrap">At startup</td></tr>
+  <tr><td><code>queries_NNNN.csv</code></td><td class="wrap">One line per query (see below). With rotation by size.</td><td class="wrap">Flushed to disk every second</td></tr>
+  <tr><td><code>intervals_1s.csv</code></td><td class="wrap">Per-second aggregates.</td><td class="wrap">One line per second, straight to disk</td></tr>
+  <tr><td><code>intervals_1m.csv</code></td><td class="wrap">Per-minute aggregates (same columns).</td><td class="wrap">One line per minute</td></tr>
+  <tr><td><code>events.csv</code></td><td class="wrap">Events: <code>timestamp, level, category, message</code>.</td><td class="wrap">At every event</td></tr>
+  <tr><td><code>app.log</code></td><td class="wrap">Readable text log of the same events and of any internal errors.</td><td class="wrap">At every event</td></tr>
+  <tr><td><code>summary.json</code></td><td class="wrap">Totals, complete latency histogram, outcomes, main errors, results per query, seconds per health state.</td><td class="wrap">Every 30 s and at the end, atomically</td></tr>
+  <tr><td><code>report_vX.Y.html</code></td><td class="wrap">Final report and subsequent regenerations.</td><td class="wrap">At the end or on request</td></tr>
+</table>
+<h4>Columns of <code>queries_NNNN.csv</code></h4>
+<table>
+  <tr><th>Column</th><th>Content</th></tr>
+  <tr><td>timestamp</td><td class="wrap">Completion instant (local time, milliseconds).</td></tr>
+  <tr><td>elapsed_ms</td><td class="wrap">Milliseconds since the start of the test.</td></tr>
+  <tr><td>seq · worker</td><td class="wrap">Sequence number of the query · worker that executed it.</td></tr>
+  <tr><td>qname · qtype</td><td class="wrap">Actual name (with <code>{rnd}</code> already replaced) · type.</td></tr>
+  <tr><td>outcome · rcode</td><td class="wrap">Outcome (see <a href="#esiti">ch. 8</a>) · numeric RCODE (empty if there is no response).</td></tr>
+  <tr><td>latency_ms</td><td class="wrap">Latency; for timeouts it is the time waited.</td></tr>
+  <tr><td>resp_bytes · answers</td><td class="wrap">Size of the response · number of records in the answer section.</td></tr>
+  <tr><td>aa · tc</td><td class="wrap">Authoritative Answer flag · Truncated flag (1/0).</td></tr>
+  <tr><td>detail</td><td class="wrap">Error message or Extended DNS Error.</td></tr>
+</table>
+<h4>Columns of <code>intervals_1s.csv</code> and <code>intervals_1m.csv</code></h4>
+<p><code>timestamp</code> (start of the interval), <code>elapsed_s</code>, <code>duration_s</code>, <code>sent</code>, <code>completed</code>, <code>responses</code>, <code>success</code>, <code>success_pct</code>, <code>noerror</code>, <code>nxdomain</code>, <code>servfail</code>, <code>refused</code>, <code>other_rcode</code>, <code>timeouts</code>, <code>net_errors</code>, <code>other_errors</code>, <code>truncated</code>, <code>bytes_in</code>, <code>qps_sent</code>, <code>qps_responses</code>, <code>lat_min_ms</code>, <code>lat_avg_ms</code>, <code>lat_p50_ms</code>, <code>lat_p90_ms</code>, <code>lat_p95_ms</code>, <code>lat_p99_ms</code>, <code>lat_max_ms</code>, <code>health</code> (state in the second, written in Italian: OK, DEGRADATO [degraded], NON DISPONIBILE [unavailable], NESSUN DATO [no data]; in the per-minute file, the worst state of the minute).</p>
+<div class="box why"><b>Why these files</b>The per-query log is the raw data, useful for forensic analysis (which name, when, with which error). The aggregates are the basis for charts and reports and stay small even after days of testing. <code>summary.json</code> contains the complete histogram: exact percentiles can be recomputed from it without rereading millions of lines. Continuous, atomic writing makes the session usable even if it is interrupted.</div>
+
+<!-- ============================================================ -->
+<h2 id="report">11. Reports and after-the-fact analysis</h2>
+<h3>HTML report</h3>
+<p>Generated automatically at the end of every test, it is a self-contained HTML file (it opens in any browser and can be printed to PDF with <kbd>Ctrl</kbd>+<kbd>P</kbd> → “Save as PDF”). It contains:</p>
+<ul>
+  <li>a summary with a verdict (green, yellow or red) and the main indicators, including availability (seconds not “unavailable” out of the seconds measured);</li>
+  <li>a strip showing the health state over time, and throughput, latency and failure charts;</li>
+  <li>the latency distribution by band;</li>
+  <li>tables of outcomes, overall latencies (min, mean, p50, p90, p95, p99, p99.9, max), availability by state, other indicators, main errors, results per query;</li>
+  <li>significant events, the complete test configuration and the list of session files.</li>
+</ul>
+<p>For long tests the report charts use the per-minute data and at most 1500 points: in merged points the QPS is the average, p50 the average, and p95, p99 and maximum are the worst value in the group, so peaks remain visible.</p>
+<h3>Open session…</h3>
+<p>Loads a saved session into the dashboard, even one from other PCs or one that was interrupted. The charts are rebuilt from <code>intervals_1s.csv</code> and <code>intervals_1m.csv</code> (streamed reading: even multi-day sessions open in a few seconds) and are fully navigable; indicators, outcomes and results per query come from <code>summary.json</code>, the events from <code>events.csv</code>. A session cannot be opened while a test is running.</p>
+
+<h3 id="logquery">11.3 Per-query log analysis</h3>
+<p>The <b>Analyse query log…</b> button opens a window dedicated to the after-the-fact graphical analysis of the <code>queries_NNNN.csv</code> files, that is, of the raw data: one line for every query. It is used when the aggregates are not enough, to understand <i>which</i> queries failed, exactly when, with what latency and on which name.</p>
+<table>
+  <tr><th>Element</th><th>Purpose and technical rationale</th></tr>
+  <tr><td class="el">Open files… / Open session folder…</td><td class="wrap">Loads one or more <code>queries_NNNN.csv</code> files (multiple selection) or all those in a session folder, in rotation order. Both CSV formats are recognised from the header. Incomplete lines (for example the last one, if the PC shut down while writing) are ignored and counted. Reading takes place in the background with a progress indicator and a <b>Cancel</b> button; the data is held in memory in compact form (about 30 bytes per query: 5 million queries ≈ 150 MB). Above 2 GB of files confirmation is requested.</td></tr>
+  <tr><td class="el">Name contains</td><td class="wrap">Filters the queries whose name contains the given text, case-insensitively (for example <code>www</code>, or the name of a zone).</td></tr>
+  <tr><td class="el">Type</td><td class="wrap">A single record type only (the list shows the types present in the log, most frequent first).</td></tr>
+  <tr><td class="el">Outcome</td><td class="wrap"><b>All</b>, <b>Successes only</b>, <b>Failures only</b>, or a specific outcome (NOERROR, SERVFAIL, TIMEOUT, …) among those present in the log.</td></tr>
+  <tr><td class="el">NXDOMAIN valid</td><td class="wrap">As in the test: decides whether NXDOMAIN counts among the successes (“successes/failures only” filters and charts).</td></tr>
+  <tr><td class="el">Apply filter / Reset</td><td class="wrap">Applies the filters (also with <kbd>Enter</kbd> in the name field) or resets them to “all”. The number of selected queries is shown on the right.</td></tr>
+  <tr><td class="el">Latencies on a log scale</td><td class="wrap">Logarithmic latency axis (default): 1 ms responses and 2000 ms timeouts remain readable on the same chart.</td></tr>
+  <tr><td class="el">Individual queries</td><td class="wrap">Scatter chart: <b>one point per query</b>, x-axis = completion instant, y-axis = latency. Colours: <span style="color:#2563eb">valid response</span>, <span style="color:#ea8a0c">error RCODE</span> (SERVFAIL, REFUSED, …), <span style="color:#7c3aed">timeout</span> (at the timeout level), <span style="color:#dc2626">transport error</span>. The points are drawn as a pixel-level image, so even millions of queries are displayed in an instant; where several queries fall on the same pixel the most serious outcome prevails, so a single problem is not hidden beneath thousands of correct responses, and the colour intensity increases with density. With few queries the points are larger.</td></tr>
+  <tr><td class="el">Throughput · Latency · Failures</td><td class="wrap">The same three charts as the dashboard, recomputed on the filtered queries only. The resolution is <b>adaptive</b>: at every change of view the aggregates are recomputed over the visible range, with a “round” step (1 s, 2 s, 5 s … 1 day) chosen so as to have at most about 1200 points. You can therefore go from a whole week to a few seconds while always keeping maximum detail. The percentiles of each interval are computed exactly on the latencies of the responses (<i>nearest rank</i> method).</td></tr>
+  <tr><td class="el">Navigation</td><td class="wrap">As in the dashboard: wheel = scroll, <kbd>Ctrl</kbd>+wheel = zoom, drag = move, double-click or the <b>All</b> button = whole period, scroll bar. The four charts are synchronised.</td></tr>
+  <tr><td class="el">Outcomes</td><td class="wrap">Count and percentage of each outcome in the visible range, with the filters applied.</td></tr>
+  <tr><td class="el">By name</td><td class="wrap">Statistics by name and type in the visible range: queries, success, timeouts, errors, mean and p95 latency, percentage of AA flags. Names generated by <code>{rnd}</code> (first label of 10 alphanumeric characters) are grouped as <code>{rnd}.zone</code>; otherwise each one would be a row.</td></tr>
+  <tr><td class="el">Queries</td><td class="wrap">List of the individual queries in the visible range (first 50,000): time to the millisecond, actual name, type, outcome, latency, AA/TC flags, worker, detail. Narrowing the view onto a peak immediately gives the list of the queries involved.</td></tr>
+  <tr><td class="el">Export selection…</td><td class="wrap">Saves to a new CSV, in the same format as the log, the filtered queries in the visible range: useful for attaching to a ticket only the queries of one episode. The exported file can in turn be reopened in this window.</td></tr>
+</table>
+<div class="box why"><b>Why an analysis of individual queries</b>The per-second aggregates tell you <i>how much</i> and <i>when</i>; the per-query log tells you <i>what</i>. A 0.5% timeout rate may be distributed evenly (random loss on the network) or concentrated on a name, a type or a worker (a problem with a zone, a record or a connection): the scatter chart and the “By name” table tell them apart at a glance.</div>
+
+<!-- ============================================================ -->
+<h2 id="scenari">12. Recommended test scenarios</h2>
+<h3>Authoritative server</h3>
+<ol>
+  <li><b>Reconnaissance.</b> Identify the name servers of the zone (NS records) and their addresses. Check whether they are on different networks: RFC 2182 recommends distributing them, so that a network failure does not hit them all at once.</li>
+  <li><b>Consistency.</b> With “Check target”, query <code>zone SOA</code> on each name server: the serial number must match, otherwise the secondaries are not synchronising. Also compare NS, MX and the main records.</li>
+  <li><b>Protocols.</b> Repeat the check over TCP (it must work), without EDNS (responses limited to 512 bytes, possible TC) and with DNSSEC (DO) if the zone is signed.</li>
+  <li><b>Availability over time.</b> A list with only names from the hosted zones plus <code>{rnd}.zone A</code>, RD flag off, low load (2–20 qps), duration 24–72 hours. To compare several name servers, run several instances of the program in parallel, one per server: you can see straight away whether the degradations are common (shared network) or affect a single node.</li>
+  <li><b>Step capacity</b> (only with formal authorisation). 10-minute sessions at increasing load (e.g. 10, 50, 100, 200 qps) with ramp-up. Note the level at which p95/p99 rise or timeouts and truncated responses appear.</li>
+</ol>
+<h3>Recursive resolver</h3>
+<ul>
+  <li>RD flag on, list of real domains in random order, NXDOMAIN valid.</li>
+  <li>The first pass fills the cache: from then on the latencies mainly measure responses from the cache. To measure full resolution use <code>{rnd}</code> names (sparingly: each one generates traffic towards the authoritative servers of that domain).</li>
+</ul>
+<h3>Encrypted services (DoT, DoH, DoQ)</h3>
+<ul>
+  <li>Compare connection reuse on and off to measure the cost of the handshake and the ability to accept new connections.</li>
+  <li>In DoH compare HTTP/1.1, HTTP/2 and HTTP/3 and the GET and POST methods.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="lettura">13. How to read the results</h2>
+<table>
+  <tr><th>What you observe</th><th>Likely interpretation</th></tr>
+  <tr><td class="wrap">Sent/s below the target</td><td class="wrap">The client cannot keep up with the rate: workers insufficient for the latency or timeout. It is not a server limit: increase the workers.</td></tr>
+  <tr><td class="wrap">Responses/s below Sent/s, timeouts increasing</td><td class="wrap">The server (or the network) is losing queries. If this happens above a certain load threshold and is proportional to the load, it is a capacity limit or a rate-limiting mechanism.</td></tr>
+  <tr><td class="wrap">Timeouts in regular spikes (every N minutes)</td><td class="wrap">Periodic activity on the server or the network: zone reloads, backups, log rotation, route changes. Compare the times with the server logs.</td></tr>
+  <tr><td class="wrap">Stable p50, p95/p99 spiking</td><td class="wrap">Momentary queues on the server or network jitter. If the spikes coincide with those of several name servers on different networks, the cause is probably close to the test machine.</td></tr>
+  <tr><td class="wrap">All latencies rise together</td><td class="wrap">Saturation (CPU, bandwidth, network queue) or a change of network route.</td></tr>
+  <tr><td class="wrap">Responses with the TC flag, or timeouts on some queries only</td><td class="wrap">Response Rate Limiting (RRL): the authoritative server limits responses per source address and truncates or drops the excess. It hits identical repeated responses first: compare a list with a single name and one with many different names.</td></tr>
+  <tr><td class="wrap">SERVFAIL on an authoritative server</td><td class="wrap">Zone not loaded, DNSSEC signing error, failed server backend. Check the EDE detail and the “Per query” tab.</td></tr>
+  <tr><td class="wrap">REFUSED</td><td class="wrap">Zone not hosted, RD not allowed, ACL. See the suggestion in Check target.</td></tr>
+  <tr><td class="wrap">Connections growing continuously</td><td class="wrap">The server is closing the connections (idle time or limit on queries per connection): legitimate behaviour, but every reopening costs a handshake.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="limiti">14. Limitations and caveats</h2>
+<ul>
+  <li><b>A single source address.</b> All traffic leaves from the test machine. Per-IP-address protections (RRL, firewalls, anti-DDoS) kick in well before the server's real capacity: the limit measured from a single PC is often that of the protection. Measuring the real capacity requires several machines or a test agreed with the operator.</li>
+  <li><b>The measurement includes the network.</b> Latencies and losses include the path between the machine and the server. To distinguish server problems from network problems, compare several name servers and, if possible, several measurement points.</li>
+  <li><b>Anycast.</b> If the server is anycast, you measure the node reached by the test machine, not the whole service.</li>
+  <li><b>Capacity of the test PC.</b> At very high rates (thousands of qps) the limit may become the PC's CPU or network: check “Sent/s” and the “queue” in the status bar.</li>
+  <li><b>Name resolution.</b> The server name is resolved once at startup: a change of address during the test is not followed.</li>
+  <li><b>Windows updates.</b> The program prevents sleep, but not scheduled restarts: turn them off for the duration of long tests.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 id="problemi">15. Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Cause and remedy</th></tr>
+  <tr><td class="wrap">All responses REFUSED</td><td class="wrap">Resolver queried without RD → turn on “RD flag”. Authoritative server queried for zones it does not host → use names from its zones. REFUSED even with RD on → source address not authorised (ACL).</td></tr>
+  <tr><td class="wrap">All queries TIMEOUT</td><td class="wrap">Port filtered by a firewall (local, corporate or the server's), wrong address, protocol not offered (e.g. DoT not enabled). Try UDP and TCP on port 53 for comparison.</td></tr>
+  <tr><td class="wrap">NET_ERROR “ConnectionReset” over UDP</td><td class="wrap">The server replied “port unreachable” (ICMP): no DNS service at that address and port.</td></tr>
+  <tr><td class="wrap">TLS_ERROR</td><td class="wrap">Certificate not trusted or with a different name: set the correct “TLS name (SNI)”. Only in the lab, turn off verification.</td></tr>
+  <tr><td class="wrap">HTTP_ERROR 404/415 in DoH</td><td class="wrap">Wrong URL path (often <code>/dns-query</code>) or method not supported: try the other method.</td></tr>
+  <tr><td class="wrap">“QUIC not supported”</td><td class="wrap">DoQ and HTTP/3 require Windows 11 or Windows Server 2022 or later and <code>msquic.dll</code> next to the executable.</td></tr>
+  <tr><td class="wrap">Many “late responses”</td><td class="wrap">Timeout too short compared with the server's real latency: increase it.</td></tr>
+  <tr><td class="wrap">Queue growing in the status bar</td><td class="wrap">The PC cannot process the results at the required rate: reduce the QPS or the per-query log (“Failures only”).</td></tr>
+  <tr><td class="wrap">Unexpected interface error</td><td class="wrap">The test continues and the data stays saved. Send the <code>crash.log</code> file from the data folder for diagnosis.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="tasti">16. Mouse and keyboard</h2>
+<table>
+  <tr><th>Action</th><th>Effect</th></tr>
+  <tr><td><kbd>F1</kbd></td><td>Opens this guide.</td></tr>
+  <tr><td>Wheel on the charts</td><td>Scrolls through time (up = back).</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + wheel on the charts</td><td>Zoom centred on the pointer.</td></tr>
+  <tr><td>Dragging on the charts</td><td>Moves the view.</td></tr>
+  <tr><td>Double-click on the charts</td><td>Returns to real time.</td></tr>
+  <tr><td><kbd>Enter</kbd> in the From/To time fields</td><td>Applies the range.</td></tr>
+  <tr><td><kbd>Ctrl</kbd> + <kbd>C</kbd> in the tables</td><td>Copies the selected rows with the headers.</td></tr>
+  <tr><td>Arrow of the Server / URL / TLS name fields</td><td>Last 30 values used.</td></tr>
+  <tr><td><kbd>Enter</kbd> in the “Name contains” field (log analysis)</td><td>Applies the filter.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="glossario">17. Glossary</h2>
+<table>
+  <tr><th>Term</th><th>Definition</th></tr>
+  <tr><td>AA</td><td class="wrap">Authoritative Answer: the response comes from the server that owns the zone.</td></tr>
+  <tr><td>Anycast</td><td class="wrap">The same IP address announced by several nodes: the nearest one in network terms is reached.</td></tr>
+  <tr><td>Authoritative</td><td class="wrap">Server that hosts zones and provides their original data.</td></tr>
+  <tr><td>EDE</td><td class="wrap">Extended DNS Error (RFC 8914): a code explaining the reason for an error.</td></tr>
+  <tr><td>EDNS0</td><td class="wrap">DNS extension (RFC 6891) for UDP responses over 512 bytes, additional flags and options.</td></tr>
+  <tr><td>NODATA</td><td class="wrap">NOERROR without records: the name exists but has no records of the requested type.</td></tr>
+  <tr><td>Open resolver</td><td class="wrap">Server that resolves third-party names for anyone: exploitable for amplification attacks.</td></tr>
+  <tr><td>Percentile</td><td class="wrap">p95 = the value below which 95% of the measurements fall.</td></tr>
+  <tr><td>QPS</td><td class="wrap">Queries per second.</td></tr>
+  <tr><td>RD / RA</td><td class="wrap">Recursion Desired (requested by the client) / Recursion Available (offered by the server).</td></tr>
+  <tr><td>Recursive resolver</td><td class="wrap">Server that resolves any name by querying the authoritative servers and keeping the responses in cache.</td></tr>
+  <tr><td>RRL</td><td class="wrap">Response Rate Limiting: limiting of responses per source address on authoritative servers.</td></tr>
+  <tr><td>SNI / ALPN</td><td class="wrap">TLS extensions: requested server name / application protocol (e.g. <code>doq</code>).</td></tr>
+  <tr><td>SOA serial</td><td class="wrap">Version number of the zone: it must match on all name servers.</td></tr>
+  <tr><td>TC</td><td class="wrap">Truncated: response too large for UDP; the client should repeat the query over TCP.</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="versioni">18. Versions</h2>
+<table>
+  <tr><th>Version</th><th>What's new</th></tr>
+  <tr><td>1.2</td><td class="wrap">Interface in Italian and English (🌐 Language menu, <code>lang\en.json</code> file), including messages, events, HTML report and guide. New <b>Analyse query log…</b> window: scatter chart of individual queries, filters by name, type and outcome, aggregates with adaptive resolution, tables by outcome and by name, list of queries, export of the selection. Published on GitHub.</td></tr>
+  <tr><td>1.1.0</td><td class="wrap">History of the last 30 servers, DoH URLs and TLS names. Load and Save buttons for the query list. Charts with complete navigable history: scroll bar, wheel, zoom, dragging, From/To range with date and time, Real time button. Raised zero line and highlighted no-data area. Opening of saved sessions in the dashboard. Built-in HTML guide (<kbd>F1</kbd>).</td></tr>
+  <tr><td>1.0.1</td><td class="wrap">Decoding of Extended DNS Errors; diagnostic suggestions in the check window.</td></tr>
+  <tr><td>1.0.0</td><td class="wrap">First version: UDP, TCP, DoT, DoH, DoQ; real-time dashboard; per-query log, aggregates, events; HTML report.</td></tr>
+</table>
+
+<footer>DNS Load Tester · DGR – ICT GRC Consulting · Guide v1.2 · <a href="https://github.com/Gate-SPM-Array/DnsLoadTester">github.com/Gate-SPM-Array/DnsLoadTester</a></footer>
+</main>
+</div>
+</body>
+</html>

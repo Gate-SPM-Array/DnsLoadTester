@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+publish/
+dist/
+*.user
+*.suo
+.vs/
+.idea/
+TestResults/
+
+# Runtime data of the portable app (never commit: contains targets, customer names and measurements)
+Sessioni/
+*.settings.json
+*.history.json
+crash.log
+Guida_DnsLoadTester_v*.html
+Guide_DnsLoadTester_v*.html
+# Exported query logs and reports (may contain internal server names and IP addresses)
+queries_*.csv
+intervals_*.csv
+events.csv
+report_v*.html
+
+# agent worktrees
+.claude/worktrees/

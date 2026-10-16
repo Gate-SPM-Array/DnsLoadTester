@@ -1,0 +1,18 @@
+# Esempio di elenco query per DNS Load Tester
+# Formato: nome TIPO   (oppure solo nome: si usa il "Tipo predefinito")
+# Sostituire dominio.it con le zone servite dal server autoritativo in prova.
+
+dominio.it SOA
+dominio.it NS
+dominio.it MX
+dominio.it TXT
+www.dominio.it A
+www.dominio.it AAAA
+mail.dominio.it A
+
+# Nomi inesistenti (etichetta casuale a ogni query): verificano la risposta NXDOMAIN
+# e non sono influenzati da eventuali cache intermedie.
+{rnd}.dominio.it A
+
+# Con DNSSEC attivo sulla zona, abilitare "DNSSEC (DO)" e aggiungere ad esempio:
+# dominio.it DNSKEY

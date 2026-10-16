@@ -1,0 +1,126 @@
+<Window x:Class="DnsLoadTester.App.QueryLogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:DnsLoadTester.App.Controls"
+        xmlns:l="clr-namespace:DnsLoadTester.App"
+        l:Loc.Text="Analisi del log per query"
+        Height="860" Width="1400" MinHeight="600" MinWidth="1000"
+        FontFamily="Segoe UI" FontSize="12.5"
+        WindowStartupLocation="CenterOwner" Background="{StaticResource AppBg}" Icon="app.ico">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="8"/>
+            <RowDefinition Height="230" MinHeight="110"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- File -->
+        <Border Grid.Row="0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="12,8">
+            <DockPanel>
+                <Button x:Name="BtnExport" DockPanel.Dock="Right" l:Loc.Text="Esporta selezione…" Click="BtnExport_Click" IsEnabled="False" Margin="0"
+                        l:Loc.Tip="Salva in un nuovo CSV le query filtrate nell'intervallo visibile"/>
+                <WrapPanel>
+                    <Button x:Name="BtnOpenFiles" Style="{StaticResource BtnPrimary}" l:Loc.Text="Apri file…" Click="BtnOpenFiles_Click"
+                            l:Loc.Tip="Carica uno o più file queries_NNNN.csv"/>
+                    <Button x:Name="BtnOpenFolder" l:Loc.Text="Apri cartella sessione…" Click="BtnOpenFolder_Click"
+                            l:Loc.Tip="Carica tutti i file queries_*.csv di una cartella di sessione"/>
+                    <Button x:Name="BtnCancel" l:Loc.Text="Annulla" Click="BtnCancel_Click" Visibility="Collapsed"/>
+                    <TextBlock x:Name="TxtInfo" VerticalAlignment="Center" Margin="10,0,0,0" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
+                </WrapPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Filtri -->
+        <WrapPanel Grid.Row="1" Margin="12,8,12,6" x:Name="PanelFilter" IsEnabled="False">
+            <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Nome contiene"/>
+            <TextBox x:Name="TxtName" Width="170" Margin="0,0,14,0" KeyDown="Filter_KeyDown"
+                     l:Loc.Tip="Parte del nome (senza distinzione tra maiuscole e minuscole)"/>
+            <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Tipo"/>
+            <ComboBox x:Name="CmbType" Width="90" Margin="0,0,14,0"/>
+            <TextBlock Style="{StaticResource Lbl}" l:Loc.Text="Esito"/>
+            <ComboBox x:Name="CmbOutcome" Width="160" Margin="0,0,14,0"/>
+            <CheckBox x:Name="ChkNx" l:Loc.Text="NXDOMAIN valido" IsChecked="True" Margin="0,0,14,0" VerticalAlignment="Center"
+                      l:Loc.Tip="Conta NXDOMAIN tra le risposte valide (successi)"/>
+            <Button x:Name="BtnApply" Style="{StaticResource BtnPrimary}" l:Loc.Text="Applica filtro" Click="BtnApply_Click"/>
+            <Button l:Loc.Text="Azzera" Click="BtnResetFilter_Click"/>
+            <Rectangle Width="1" Fill="{StaticResource Line}" Margin="4,2,12,2"/>
+            <CheckBox x:Name="ChkLog" l:Loc.Text="Latenze in scala logaritmica" IsChecked="True" VerticalAlignment="Center"
+                      Checked="ChkLog_Changed" Unchecked="ChkLog_Changed"/>
+            <TextBlock x:Name="TxtMatch" VerticalAlignment="Center" Margin="14,0,0,0" FontWeight="SemiBold"/>
+        </WrapPanel>
+
+        <!-- Grafici -->
+        <Border Grid.Row="2" Margin="10,0,10,0" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="6" Padding="4">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="2*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <c:LatencyScatterChart x:Name="Scatter" Grid.Row="0" Margin="0,0,0,4"/>
+                <c:TimeSeriesChart x:Name="ChartQps" Grid.Row="1" Margin="0,0,0,4"/>
+                <c:TimeSeriesChart x:Name="ChartLat" Grid.Row="2" Margin="0,0,0,4"/>
+                <c:TimeSeriesChart x:Name="ChartFail" Grid.Row="3"/>
+                <DockPanel Grid.Row="4" Margin="58,2,14,0">
+                    <TextBlock x:Name="TxtView" DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0" VerticalAlignment="Center"/>
+                    <Button DockPanel.Dock="Left" l:Loc.Text="Tutto" Padding="8,1" Margin="0,0,8,0" Click="BtnAll_Click"
+                            l:Loc.Tip="Mostra l'intero periodo caricato (anche doppio clic su un grafico)"/>
+                    <ScrollBar x:Name="Scroll" Orientation="Horizontal" Height="16" Scroll="Scroll_Scroll"
+                               l:Loc.Tip="Rotella = scorre, Ctrl+rotella = zoom, trascinamento = sposta, doppio clic = tutto il periodo"/>
+                </DockPanel>
+            </Grid>
+        </Border>
+
+        <GridSplitter Grid.Row="3" Height="8" HorizontalAlignment="Stretch" Background="Transparent"/>
+
+        <TabControl Grid.Row="4" x:Name="Tabs" Margin="10,0,10,0" Background="White" BorderBrush="{StaticResource Line}" SelectionChanged="Tabs_SelectionChanged">
+            <TabItem l:Loc.Text="Esiti">
+                <DataGrid x:Name="GridOutcomes">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn l:Loc.Text="Esito" Binding="{Binding Name}" Width="220"/>
+                        <DataGridTextColumn l:Loc.Text="Query" Binding="{Binding Count}" Width="140"/>
+                        <DataGridTextColumn Header="%" Binding="{Binding Pct}" Width="100"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem l:Loc.Text="Per nome">
+                <DataGrid x:Name="GridNames">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn l:Loc.Text="Nome e tipo" Binding="{Binding Name}" Width="*"/>
+                        <DataGridTextColumn l:Loc.Text="Query" Binding="{Binding Count}" Width="90"/>
+                        <DataGridTextColumn l:Loc.Text="Successo" Binding="{Binding Success}" Width="90"/>
+                        <DataGridTextColumn l:Loc.Text="Timeout" Binding="{Binding Timeouts}" Width="80"/>
+                        <DataGridTextColumn l:Loc.Text="Errori" Binding="{Binding Errors}" Width="80"/>
+                        <DataGridTextColumn l:Loc.Text="Latenza media" Binding="{Binding Avg}" Width="100"/>
+                        <DataGridTextColumn l:Loc.Text="Latenza p95" Binding="{Binding P95}" Width="100"/>
+                        <DataGridTextColumn l:Loc.Text="Flag AA" Binding="{Binding Aa}" Width="70"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem l:Loc.Text="Query">
+                <DataGrid x:Name="GridRows">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn l:Loc.Text="Ora" Binding="{Binding Time}" Width="150"/>
+                        <DataGridTextColumn l:Loc.Text="Nome" Binding="{Binding Name}" Width="230"/>
+                        <DataGridTextColumn l:Loc.Text="Tipo" Binding="{Binding Type}" Width="60"/>
+                        <DataGridTextColumn l:Loc.Text="Esito" Binding="{Binding Outcome}" Width="110"/>
+                        <DataGridTextColumn l:Loc.Text="Latenza ms" Binding="{Binding Latency}" Width="80"/>
+                        <DataGridTextColumn Header="AA" Binding="{Binding Aa}" Width="40"/>
+                        <DataGridTextColumn Header="TC" Binding="{Binding Tc}" Width="40"/>
+                        <DataGridTextColumn l:Loc.Text="Worker" Binding="{Binding Worker}" Width="60"/>
+                        <DataGridTextColumn l:Loc.Text="Dettaglio" Binding="{Binding Detail}" Width="*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+        </TabControl>
+
+        <Border Grid.Row="5" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="12,5" Margin="0,10,0,0">
+            <TextBlock x:Name="TxtStatus" Foreground="{StaticResource Muted}" TextTrimming="CharacterEllipsis"/>
+        </Border>
+    </Grid>
+</Window>
